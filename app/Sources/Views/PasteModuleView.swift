@@ -22,10 +22,17 @@ struct PasteModuleView: View {
                             Text(module.name).tag(LoadedModule?.some(module))
                         }
                     }
+                    if let target = overwriteTarget {
+                        Button {
+                            script = target.scriptContent
+                        } label: {
+                            Label("Charger le code actuel du module", systemImage: "arrow.down.doc")
+                        }
+                    }
                 } footer: {
                     Text(overwriteTarget == nil
                          ? "Crée un module local à partir du code collé."
-                         : "Remplace le script du module sélectionné (conserve son manifest).")
+                         : "Remplace le script du module sélectionné (conserve son manifest). Le code actuel est chargé dans l'éditeur pour que tu puisses le modifier.")
                 }
 
                 if overwriteTarget == nil {
@@ -48,6 +55,12 @@ struct PasteModuleView: View {
             .navigationTitle("Coller un module")
             .navigationBarTitleDisplayMode(.inline)
             .keyboardDoneToolbar()
+            .onChange(of: overwriteTarget) { newValue in
+                // Précharge le code du module ciblé (si l'éditeur est vide).
+                if let target = newValue, script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    script = target.scriptContent
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Annuler") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {

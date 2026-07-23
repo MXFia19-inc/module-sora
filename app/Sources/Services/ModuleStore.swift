@@ -92,6 +92,11 @@ final class ModuleStore: ObservableObject {
         persist()
     }
 
+    func removeAll() {
+        modules.removeAll()
+        persist()
+    }
+
     /// Ajoute (ou met à jour) un module à partir de l'URL de son manifest.
     @discardableResult
     func addByManifestURL(_ urlString: String) async throws -> LoadedModule {

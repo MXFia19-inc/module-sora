@@ -48,6 +48,7 @@ final class MassTester: ObservableObject {
             return
         }
         guard let runner = runnerOpt else { return }
+        success(index, "Chargement", "module chargé")
 
         // 2. Recherche.
         var firstHref: String?

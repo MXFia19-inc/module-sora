@@ -66,6 +66,9 @@ jobs:
           # PiP / audio en arrière-plan
           find . -name "Info.plist" -exec plutil -replace UIBackgroundModes -json '["audio"]' {} \;
 
+          # ATS : autorise l'HTTP en clair (les modules visent des hébergeurs http://)
+          find . -name "Info.plist" -exec plutil -replace NSAppTransportSecurity -json '{"NSAllowsArbitraryLoads": true}' {} \;
+
       - name: Build IPA
         run: |
           chmod +x ./buildipa.sh

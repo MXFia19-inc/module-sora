@@ -10,6 +10,7 @@ struct ModulesListView: View {
     @State private var showLibrary = false
     @State private var showPaste = false
     @State private var showImporter = false
+    @State private var showDeleteAll = false
     @State private var urlText = ""
     @State private var busy = false
     @State private var errorMessage: String?
@@ -43,6 +44,20 @@ struct ModulesListView: View {
             ModuleTestView(module: module)
         }
         .toolbar {
+            if !store.modules.isEmpty {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        Button {
+                            Task { await refreshAll() }
+                        } label: { Label("Tout rafraîchir", systemImage: "arrow.clockwise") }
+                        Button(role: .destructive) {
+                            showDeleteAll = true
+                        } label: { Label("Tout supprimer", systemImage: "trash") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button { showAddURL = true } label: { Label("Ajouter par URL", systemImage: "link") }
@@ -81,6 +96,10 @@ struct ModulesListView: View {
         .sheet(isPresented: $showPaste) {
             PasteModuleView()
         }
+        .confirmationDialog("Supprimer tous les modules ?", isPresented: $showDeleteAll, titleVisibility: .visible) {
+            Button("Tout supprimer (\(store.modules.count))", role: .destructive) { store.removeAll() }
+            Button("Annuler", role: .cancel) {}
+        }
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [.json, .javaScript, .item],
@@ -106,6 +125,17 @@ struct ModulesListView: View {
         busy = true
         do { try await store.refresh(module) }
         catch { errorMessage = error.localizedDescription }
+        busy = false
+    }
+
+    private func refreshAll() async {
+        busy = true
+        for module in store.modules {
+            // Ignore les modules locaux (pas d'URL source).
+            guard module.manifest.manifestUrl != nil || module.manifest.scriptUrl.hasPrefix("http") else { continue }
+            do { try await store.refresh(module) }
+            catch { errorMessage = error.localizedDescription }
+        }
         busy = false
     }
 

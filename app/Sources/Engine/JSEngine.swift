@@ -50,6 +50,9 @@ final class JSEngine {
     private let settings: AppSettings
     private let queue: DispatchQueue
     private let disposeFlag = DisposeFlag()
+    /// Dernière exception remontée par le gestionnaire (pour détecter les
+    /// erreurs d'évaluation que le handler « consomme »).
+    private var lastException: String?
 
     private var timeout: Double { max(1, settings.jsTimeout) }
 
@@ -69,14 +72,19 @@ final class JSEngine {
     func evaluate(script: String) throws {
         try queue.sync {
             context.exceptionHandler = { [weak self] _, exception in
-                self?.log(.error, exception?.toString() ?? "exception JS")
+                let msg = exception?.toString() ?? "exception JS"
+                self?.lastException = msg
+                self?.log(.error, msg)
             }
             context.evaluateScript(JSPolyfills.source)
+            // Réinitialise juste avant le script du module pour ne capturer que ses erreurs.
+            lastException = nil
             context.evaluateScript(script)
-            if let ex = context.exception {
-                let msg = ex.toString() ?? "exception inconnue"
+            // Le handler « consomme » l'exception (context.exception devient nil),
+            // donc on lit aussi lastException pour détecter les erreurs de syntaxe.
+            if let ex = context.exception?.toString() ?? lastException {
                 context.exception = nil
-                throw JSEngineError.scriptException(msg)
+                throw JSEngineError.scriptException(ex)
             }
         }
     }
