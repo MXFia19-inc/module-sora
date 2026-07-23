@@ -14,14 +14,21 @@ enum TestCategory: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Déduit la catégorie depuis le `type` du manifest (priorité manga > anime > film > série).
+    /// Déduit la catégorie principale depuis le `type` (priorité manga > anime > film > série).
     static func from(type: String?) -> TestCategory {
+        categories(from: type).first ?? .anime
+    }
+
+    /// Toutes les catégories déclarées par le `type` (ex. "anime/shows/movies"
+    /// → [anime, film, série]). Ordre = priorité manga > anime > film > série.
+    static func categories(from type: String?) -> [TestCategory] {
         let t = (type ?? "").lowercased()
-        if t.contains("manga") || t.contains("scan") { return .manga }
-        if t.contains("anime") { return .anime }
-        if t.contains("movie") || t.contains("film") { return .film }
-        if t.contains("show") || t.contains("serie") || t.contains("série") || t.contains("tv") { return .serie }
-        return .anime
+        var result: [TestCategory] = []
+        if t.contains("manga") || t.contains("scan") { result.append(.manga) }
+        if t.contains("anime") { result.append(.anime) }
+        if t.contains("movie") || t.contains("film") { result.append(.film) }
+        if t.contains("show") || t.contains("serie") || t.contains("série") || t.contains("tv") { result.append(.serie) }
+        return result.isEmpty ? [.anime] : result
     }
 }
 

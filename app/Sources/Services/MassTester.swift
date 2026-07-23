@@ -9,10 +9,12 @@ final class MassTester: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var currentIndex: Int?
 
-    func run(modules: [LoadedModule], debugLog: DebugLog, settings: AppSettings) async {
+    /// `overrides` : catégorie choisie manuellement par id de module (sinon Auto).
+    func run(modules: [LoadedModule], overrides: [String: TestCategory],
+             debugLog: DebugLog, settings: AppSettings) async {
         guard !isRunning else { return }
         reports = modules.map { module in
-            let category = TestCategory.from(type: module.manifest.type)
+            let category = overrides[module.id] ?? TestCategory.from(type: module.manifest.type)
             return ModuleTestReport(module: module, category: category,
                                     keyword: settings.keyword(for: category))
         }
@@ -77,12 +79,18 @@ final class MassTester: ObservableObject {
         }
 
         // 4. Épisodes.
-        var firstEpisode: String?
+        var targetEpisode: EpisodeLink?
+        let category = reports[index].category
         do {
             let result = try await timed(index, "Épisodes") { try await runner.episodes(href) }
-            if let first = result.value.first {
-                firstEpisode = first.href
-                success(index, "Épisodes", "\(result.value.count) épisode(s)")
+            if !result.value.isEmpty {
+                targetEpisode = pickEpisode(result.value, category: category,
+                                            serieEpisode: settings.serieEpisode)
+                var detail = "\(result.value.count) épisode(s)"
+                if category == .serie, let ep = targetEpisode {
+                    detail += " · test ép. \(Int(ep.number) == 0 ? settings.serieEpisode : Int(ep.number))"
+                }
+                success(index, "Épisodes", detail)
             } else {
                 fail(index, "Épisodes", message: "0 épisode")
             }
@@ -90,7 +98,7 @@ final class MassTester: ObservableObject {
             fail(index, "Épisodes", error)
         }
 
-        guard let episodeHref = firstEpisode else {
+        guard let episodeHref = targetEpisode?.href else {
             skip(index, "Flux")
             return
         }
@@ -106,6 +114,16 @@ final class MassTester: ObservableObject {
         } catch {
             fail(index, "Flux", error)
         }
+    }
+
+    /// Choisit l'épisode à tester : pour les séries, celui portant le numéro
+    /// demandé (sinon le N-ième, sinon le 1er) ; sinon le premier.
+    private func pickEpisode(_ episodes: [EpisodeLink], category: TestCategory,
+                             serieEpisode: Int) -> EpisodeLink? {
+        guard category == .serie else { return episodes.first }
+        if let match = episodes.first(where: { Int($0.number) == serieEpisode }) { return match }
+        if serieEpisode >= 1, serieEpisode <= episodes.count { return episodes[serieEpisode - 1] }
+        return episodes.first
     }
 
     // MARK: - Helpers de statut

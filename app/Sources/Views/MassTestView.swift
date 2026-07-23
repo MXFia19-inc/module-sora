@@ -9,6 +9,8 @@ struct MassTestView: View {
     @EnvironmentObject private var tester: MassTester
 
     @State private var selected: Set<String> = []
+    /// Catégorie choisie manuellement par id de module (absent = Auto).
+    @State private var overrides: [String: TestCategory] = [:]
 
     var body: some View {
         Form {
@@ -33,7 +35,13 @@ struct MassTestView: View {
             LabeledField(label: "Film", text: $settings.kwFilm)
             LabeledField(label: "Série", text: $settings.kwSerie)
             LabeledField(label: "Manga", text: $settings.kwManga)
+            Stepper("Épisode testé (séries) : \(settings.serieEpisode)",
+                    value: $settings.serieEpisode, in: 1...500)
         }
+    }
+
+    private func effectiveCategory(_ module: LoadedModule) -> TestCategory {
+        overrides[module.id] ?? TestCategory.from(type: module.manifest.type)
     }
 
     private var modulesSection: some View {
@@ -42,18 +50,38 @@ struct MassTestView: View {
                 Text("Aucun module installé.").foregroundStyle(.secondary)
             }
             ForEach(store.modules) { module in
-                Button {
-                    toggle(module.id)
-                } label: {
-                    HStack {
-                        Image(systemName: selected.contains(module.id) ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(selected.contains(module.id) ? Color.accentColor : .secondary)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(module.name).foregroundStyle(.primary)
-                            Text(TestCategory.from(type: module.manifest.type).label)
-                                .font(.caption2).foregroundStyle(.secondary)
+                let cats = TestCategory.categories(from: module.manifest.type)
+                HStack {
+                    Button {
+                        toggle(module.id)
+                    } label: {
+                        HStack {
+                            Image(systemName: selected.contains(module.id) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selected.contains(module.id) ? Color.accentColor : .secondary)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(module.name).foregroundStyle(.primary)
+                                Text(effectiveCategory(module).label + (cats.count > 1 ? " · multi-type" : ""))
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
                         }
-                        Spacer()
+                    }
+                    .buttonStyle(.borderless)
+                    Spacer()
+                    if cats.count > 1 {
+                        Menu {
+                            Button("Auto (\(TestCategory.from(type: module.manifest.type).label))") {
+                                overrides[module.id] = nil
+                            }
+                            ForEach(cats) { c in
+                                Button(c.label) { overrides[module.id] = c }
+                            }
+                        } label: {
+                            HStack(spacing: 2) {
+                                Text(overrides[module.id]?.label ?? "Auto")
+                                Image(systemName: "chevron.up.chevron.down")
+                            }
+                            .font(.caption)
+                        }
                     }
                 }
             }
@@ -74,7 +102,7 @@ struct MassTestView: View {
         Section {
             Button {
                 let modules = store.modules.filter { selected.contains($0.id) }
-                Task { await tester.run(modules: modules, debugLog: debugLog, settings: settings) }
+                Task { await tester.run(modules: modules, overrides: overrides, debugLog: debugLog, settings: settings) }
             } label: {
                 HStack {
                     if tester.isRunning {

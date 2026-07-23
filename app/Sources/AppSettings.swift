@@ -18,6 +18,9 @@ final class AppSettings: ObservableObject {
     @Published var kwSerie: String { didSet { defaults.set(kwSerie, forKey: Keys.kwSerie) } }
     @Published var kwManga: String { didSet { defaults.set(kwManga, forKey: Keys.kwManga) } }
 
+    /// Numéro d'épisode à tester pour les séries (étape Flux du testeur).
+    @Published var serieEpisode: Int { didSet { defaults.set(serieEpisode, forKey: Keys.serieEp) } }
+
     func keyword(for category: TestCategory) -> String {
         switch category {
         case .anime: return kwAnime
@@ -49,6 +52,7 @@ final class AppSettings: ObservableObject {
         static let kwFilm = "kwFilm"
         static let kwSerie = "kwSerie"
         static let kwManga = "kwManga"
+        static let serieEp = "serieEpisode"
     }
 
     private static let defaultUA =
@@ -73,5 +77,6 @@ final class AppSettings: ObservableObject {
         kwFilm = d.string(forKey: Keys.kwFilm) ?? "interstellar"
         kwSerie = d.string(forKey: Keys.kwSerie) ?? "breaking bad"
         kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
+        serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1
     }
 }
