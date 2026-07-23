@@ -12,6 +12,11 @@ struct RootView: View {
             .tabItem { Label("Modules", systemImage: "puzzlepiece.extension") }
 
             NavigationStack {
+                MassTestView()
+            }
+            .tabItem { Label("Test", systemImage: "checklist") }
+
+            NavigationStack {
                 LogsView()
             }
             .tabItem { Label("Logs", systemImage: "terminal") }

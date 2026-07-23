@@ -12,6 +12,21 @@ final class AppSettings: ObservableObject {
     @Published var blockWebhooks: Bool { didSet { defaults.set(blockWebhooks, forKey: Keys.block) } }
     @Published var defaultUserAgent: String { didSet { defaults.set(defaultUserAgent, forKey: Keys.ua) } }
 
+    // Mots-clés de recherche par type, utilisés par le testeur en masse.
+    @Published var kwAnime: String { didSet { defaults.set(kwAnime, forKey: Keys.kwAnime) } }
+    @Published var kwFilm: String { didSet { defaults.set(kwFilm, forKey: Keys.kwFilm) } }
+    @Published var kwSerie: String { didSet { defaults.set(kwSerie, forKey: Keys.kwSerie) } }
+    @Published var kwManga: String { didSet { defaults.set(kwManga, forKey: Keys.kwManga) } }
+
+    func keyword(for category: TestCategory) -> String {
+        switch category {
+        case .anime: return kwAnime
+        case .film: return kwFilm
+        case .serie: return kwSerie
+        case .manga: return kwManga
+        }
+    }
+
     /// Motifs d'URL bloqués (un par ligne) quand le blocage des trackers est actif.
     /// Éditable pour suivre les changements de backend (Discord → Supabase → …).
     @Published var blockedPatternsText: String { didSet { defaults.set(blockedPatternsText, forKey: Keys.patterns) } }
@@ -30,6 +45,10 @@ final class AppSettings: ObservableObject {
         static let block = "blockWebhooks"
         static let ua = "defaultUserAgent"
         static let patterns = "blockedPatterns"
+        static let kwAnime = "kwAnime"
+        static let kwFilm = "kwFilm"
+        static let kwSerie = "kwSerie"
+        static let kwManga = "kwManga"
     }
 
     private static let defaultUA =
@@ -50,5 +69,9 @@ final class AppSettings: ObservableObject {
         blockWebhooks = d.object(forKey: Keys.block) as? Bool ?? true
         defaultUserAgent = d.string(forKey: Keys.ua) ?? Self.defaultUA
         blockedPatternsText = d.string(forKey: Keys.patterns) ?? Self.defaultPatterns
+        kwAnime = d.string(forKey: Keys.kwAnime) ?? "one piece"
+        kwFilm = d.string(forKey: Keys.kwFilm) ?? "interstellar"
+        kwSerie = d.string(forKey: Keys.kwSerie) ?? "breaking bad"
+        kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
     }
 }
