@@ -53,13 +53,18 @@ jobs:
       - name: Générer le projet Xcode
         run: xcodegen generate --spec project.yml
 
-      - name: Patcher Info.plist (version + plein écran anti-bandes)
+      - name: Post-Generation Fix (Anti-Black Bars, Version & PiP)
         run: |
-          plutil -replace CFBundleShortVersionString -string "${{ steps.vars.outputs.version }}" Info.plist
-          plutil -replace CFBundleVersion -string "${{ github.run_number }}" Info.plist
-          # Force le plein écran (normalise le dict vide, comme la CI TwitchUnblock)
-          plutil -replace UILaunchScreen -xml "<dict/>" Info.plist
-          plutil -replace UIBackgroundModes -json '["audio"]' Info.plist
+          # Identique au bloc éprouvé de TwitchUnblock : patch de TOUS les Info.plist.
+          find . -name "Info.plist" -exec plutil -replace CFBundleShortVersionString -string "${{ steps.vars.outputs.version }}" {} \;
+          find . -name "Info.plist" -exec plutil -replace CFBundleVersion -string "${{ github.run_number }}" {} \;
+
+          # Force le plein écran sans bandes noires
+          find . -name "Info.plist" -exec plutil -remove UILaunchStoryboardName {} \; || true
+          find . -name "Info.plist" -exec plutil -replace UILaunchScreen -xml "<dict/>" {} \;
+
+          # PiP / audio en arrière-plan
+          find . -name "Info.plist" -exec plutil -replace UIBackgroundModes -json '["audio"]' {} \;
 
       - name: Build IPA
         run: |
