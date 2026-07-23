@@ -16,7 +16,23 @@ struct SettingsView: View {
                     }
                     Slider(value: $settings.jsTimeout, in: 5...120, step: 5)
                 }
-                Toggle("Bloquer les trackers (webhooks Discord)", isOn: $settings.blockWebhooks)
+                Toggle("Bloquer les trackers", isOn: $settings.blockWebhooks)
+            }
+
+            if settings.blockWebhooks {
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Motifs d'URL bloqués (un par ligne)")
+                            .font(.caption).foregroundStyle(.secondary)
+                        TextEditor(text: $settings.blockedPatternsText)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(minHeight: 90)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
+                } footer: {
+                    Text("Toute requête fetchv2 dont l'URL contient un de ces motifs est bloquée (réponse vide). Pour le tracking Supabase, ajoute l'endpoint exact, p. ex. « projet.supabase.co/rest/v1/tracking ». Ne bloque pas tout « supabase.co » si un module y lit aussi ses données.")
+                }
             }
 
             Section("Réseau") {
