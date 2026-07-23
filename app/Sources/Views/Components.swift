@@ -1,31 +1,33 @@
 import SwiftUI
 
 /// Image distante avec placeholder (iOS 16 : AsyncImage).
+///
+/// L'image ne dicte JAMAIS la taille de la vue : elle est dessinée en overlay
+/// d'un `Color.clear` flexible, remplie puis rognée. Ainsi une image trop grande
+/// renvoyée par un module ne déborde pas hors de l'écran — elle est simplement
+/// contrainte au cadre imposé par l'appelant (frame / aspectRatio).
 struct RemoteImage: View {
     let url: String?
     var cornerRadius: CGFloat = 6
 
     var body: some View {
-        AsyncImage(url: url.flatMap { URL(string: $0) }) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFill()
-            case .failure:
-                placeholder(systemImage: "photo")
-            case .empty:
-                ZStack { placeholder(systemImage: "photo"); ProgressView() }
-            @unknown default:
-                placeholder(systemImage: "photo")
+        Color.gray.opacity(0.15)
+            .overlay {
+                AsyncImage(url: url.flatMap { URL(string: $0) }) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    case .failure:
+                        Image(systemName: "photo").foregroundStyle(.secondary)
+                    case .empty:
+                        ProgressView()
+                    @unknown default:
+                        Image(systemName: "photo").foregroundStyle(.secondary)
+                    }
+                }
             }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .clipped()
-    }
-
-    private func placeholder(systemImage: String) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(Color.gray.opacity(0.2))
-            .overlay(Image(systemName: systemImage).foregroundStyle(.secondary))
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }
 

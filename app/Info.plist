@@ -60,8 +60,8 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
-    <!-- ── Launch screen ─────────────────────────────────────── -->
-    <key>UILaunchScreen</key>
-    <dict/>
+    <!-- ── Launch screen (storyboard → rendu plein écran, pas de bandes) ── -->
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
 </dict>
 </plist>

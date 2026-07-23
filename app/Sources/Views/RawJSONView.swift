@@ -39,22 +39,3 @@ struct RawJSONView: View {
         }
     }
 }
-
-/// Petit bouton « { } » à placer dans les barres d'outils pour ouvrir le JSON brut.
-struct RawJSONButton: View {
-    let title: String
-    let raw: String
-    @State private var showing = false
-
-    var body: some View {
-        Button {
-            showing = true
-        } label: {
-            Image(systemName: "curlybraces")
-        }
-        .disabled(raw.isEmpty)
-        .sheet(isPresented: $showing) {
-            RawJSONView(title: title, raw: raw)
-        }
-    }
-}

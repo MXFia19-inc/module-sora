@@ -5,7 +5,8 @@ import Combine
 ///
 /// `@Published` + persistance `UserDefaults` manuelle (plutôt que `@AppStorage`,
 /// qui ne publie pas de changement depuis une classe `ObservableObject`).
-@MainActor
+///
+/// Non isolé au main : le moteur JS lit ces réglages depuis son thread dédié.
 final class AppSettings: ObservableObject {
     @Published var jsTimeout: Double { didSet { defaults.set(jsTimeout, forKey: Keys.timeout) } }
     @Published var blockWebhooks: Bool { didSet { defaults.set(blockWebhooks, forKey: Keys.block) } }

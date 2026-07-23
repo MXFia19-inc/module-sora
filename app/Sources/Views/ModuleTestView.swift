@@ -54,6 +54,7 @@ struct ModuleTestView: View {
     @EnvironmentObject private var debugLog: DebugLog
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var session: TestSession
+    @State private var jsonSheet: RawJSONPayload?
 
     private let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
 
@@ -87,8 +88,14 @@ struct ModuleTestView: View {
         .onSubmit(of: .search) { Task { await session.search() } }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                RawJSONButton(title: "searchResults", raw: session.lastRaw)
+                Button {
+                    jsonSheet = RawJSONPayload(title: "searchResults", raw: session.lastRaw)
+                } label: { Image(systemName: "curlybraces") }
+                    .disabled(session.lastRaw.isEmpty)
             }
+        }
+        .sheet(item: $jsonSheet) { payload in
+            RawJSONView(title: payload.title, raw: payload.raw)
         }
         .overlay {
             if session.isLoading { ProgressView().controlSize(.large) }

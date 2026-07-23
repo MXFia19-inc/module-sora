@@ -11,6 +11,7 @@ struct DetailView: View {
     @State private var episodesRaw = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var jsonSheet: RawJSONPayload?
 
     var body: some View {
         List {
@@ -58,13 +59,22 @@ struct DetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    RawJSONInlineButton(title: "extractDetails", raw: detailRaw)
-                    RawJSONInlineButton(title: "extractEpisodes", raw: episodesRaw)
+                    Button {
+                        jsonSheet = RawJSONPayload(title: "extractDetails", raw: detailRaw)
+                    } label: { Label("JSON : extractDetails", systemImage: "curlybraces") }
+                        .disabled(detailRaw.isEmpty)
+                    Button {
+                        jsonSheet = RawJSONPayload(title: "extractEpisodes", raw: episodesRaw)
+                    } label: { Label("JSON : extractEpisodes", systemImage: "curlybraces") }
+                        .disabled(episodesRaw.isEmpty)
                 } label: {
                     Image(systemName: "curlybraces")
                 }
                 .disabled(detailRaw.isEmpty && episodesRaw.isEmpty)
             }
+        }
+        .sheet(item: $jsonSheet) { payload in
+            RawJSONView(title: payload.title, raw: payload.raw)
         }
         .overlay {
             if isLoading { ProgressView().controlSize(.large) }
@@ -107,19 +117,9 @@ private struct EpisodeRow: View {
     }
 }
 
-/// Ouvre le JSON brut depuis un menu (présente une feuille).
-private struct RawJSONInlineButton: View {
+/// Charge utile pour présenter le JSON brut via `.sheet(item:)`.
+struct RawJSONPayload: Identifiable {
+    let id = UUID()
     let title: String
     let raw: String
-    @State private var showing = false
-
-    var body: some View {
-        Button {
-            showing = true
-        } label: {
-            Label("JSON : \(title)", systemImage: "curlybraces")
-        }
-        .disabled(raw.isEmpty)
-        .sheet(isPresented: $showing) { RawJSONView(title: title, raw: raw) }
-    }
 }

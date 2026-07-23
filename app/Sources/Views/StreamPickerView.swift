@@ -10,6 +10,7 @@ struct StreamPickerView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var playing: StreamResult?
+    @State private var jsonSheet: RawJSONPayload?
 
     var body: some View {
         List {
@@ -41,8 +42,14 @@ struct StreamPickerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                RawJSONButton(title: "extractStreamUrl", raw: raw)
+                Button {
+                    jsonSheet = RawJSONPayload(title: "extractStreamUrl", raw: raw)
+                } label: { Image(systemName: "curlybraces") }
+                    .disabled(raw.isEmpty)
             }
+        }
+        .sheet(item: $jsonSheet) { payload in
+            RawJSONView(title: payload.title, raw: payload.raw)
         }
         .overlay {
             if isLoading { ProgressView().controlSize(.large) }

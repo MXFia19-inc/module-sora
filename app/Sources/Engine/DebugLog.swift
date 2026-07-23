@@ -25,7 +25,9 @@ struct LogEntry: Identifiable, Hashable {
 }
 
 /// Buffer observable des logs (console.log des modules, requêtes fetchv2, exceptions JS).
-@MainActor
+///
+/// Non isolé au main, mais toutes les écritures sont dispatchées sur le main par
+/// l'appelant (le moteur JS notamment), pour rester compatible avec `@Published`.
 final class DebugLog: ObservableObject {
     @Published private(set) var entries: [LogEntry] = []
 

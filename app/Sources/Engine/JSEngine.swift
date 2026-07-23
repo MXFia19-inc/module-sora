@@ -33,12 +33,16 @@ private final class ResumeGuard {
 
 /// Exécute le script d'un module dans un `JSContext` isolé et appelle ses
 /// fonctions globales (async) en résolvant les Promises côté Swift.
-@MainActor
+///
+/// IMPORTANT : tout l'accès au `JSContext` se fait sur une **file série dédiée**
+/// (`queue`), jamais sur le thread principal — l'UI reste fluide même quand un
+/// module lance des dizaines de requêtes (ex. le résolveur de movix).
 final class JSEngine {
     private let context: JSContext
     private let moduleName: String
     private weak var debugLog: DebugLog?
     private let settings: AppSettings
+    private let queue: DispatchQueue
 
     private var timeout: Double { max(1, settings.jsTimeout) }
 
@@ -48,22 +52,25 @@ final class JSEngine {
         self.moduleName = moduleName
         self.debugLog = debugLog
         self.settings = settings
+        self.queue = DispatchQueue(label: "moduletester.jsengine.\(moduleName)")
         installNativeBridge()
     }
 
     // MARK: - Chargement
 
-    /// Injecte les polyfills puis évalue le script du module.
+    /// Injecte les polyfills puis évalue le script du module (sur la file dédiée).
     func evaluate(script: String) throws {
-        context.exceptionHandler = { [weak self] _, exception in
-            self?.debugLog?.append(.error, exception?.toString() ?? "exception JS", module: self?.moduleName)
-        }
-        context.evaluateScript(JSPolyfills.source)
-        context.evaluateScript(script)
-        if let ex = context.exception {
-            let msg = ex.toString() ?? "exception inconnue"
-            context.exception = nil
-            throw JSEngineError.scriptException(msg)
+        try queue.sync {
+            context.exceptionHandler = { [weak self] _, exception in
+                self?.log(.error, exception?.toString() ?? "exception JS")
+            }
+            context.evaluateScript(JSPolyfills.source)
+            context.evaluateScript(script)
+            if let ex = context.exception {
+                let msg = ex.toString() ?? "exception inconnue"
+                context.exception = nil
+                throw JSEngineError.scriptException(msg)
+            }
         }
     }
 
@@ -71,51 +78,51 @@ final class JSEngine {
 
     /// Appelle `fn(args…)` et renvoie la chaîne retournée (résout la Promise, avec timeout).
     func callAsync(_ fn: String, _ args: [Any]) async throws -> String {
-        guard let function = context.objectForKeyedSubscript(fn), !function.isUndefined else {
-            throw JSEngineError.missingFunction(fn)
-        }
-        debugLog?.append(.info, "→ \(fn)(\(args.map { "\($0)" }.joined(separator: ", ")))", module: moduleName)
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [self] in
+                guard let function = context.objectForKeyedSubscript(fn), !function.isUndefined else {
+                    continuation.resume(throwing: JSEngineError.missingFunction(fn)); return
+                }
+                log(.info, "→ \(fn)(\(args.map { "\($0)" }.joined(separator: ", ")))")
 
-        guard let result = function.call(withArguments: args) else {
-            throw JSEngineError.jsError("l'appel de \(fn) n'a rien retourné")
-        }
-        if let ex = context.exception {
-            let msg = ex.toString() ?? "exception"
-            context.exception = nil
-            throw JSEngineError.jsError(msg)
-        }
+                guard let result = function.call(withArguments: args) else {
+                    continuation.resume(throwing: JSEngineError.jsError("l'appel de \(fn) n'a rien retourné")); return
+                }
+                if let ex = context.exception {
+                    let msg = ex.toString() ?? "exception"
+                    context.exception = nil
+                    continuation.resume(throwing: JSEngineError.jsError(msg)); return
+                }
 
-        // Retour synchrone (non-Promise).
-        if !result.hasProperty("then") {
-            return Self.stringify(result)
-        }
+                // Retour synchrone (non-Promise).
+                if !result.hasProperty("then") {
+                    continuation.resume(returning: Self.stringify(result)); return
+                }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let guardBox = ResumeGuard()
+                let guardBox = ResumeGuard()
+                let timeoutItem = DispatchWorkItem {
+                    guard guardBox.tryResume() else { return }
+                    continuation.resume(throwing: JSEngineError.timeout(fn, self.timeout))
+                }
+                queue.asyncAfter(deadline: .now() + timeout, execute: timeoutItem)
 
-            let timeoutItem = DispatchWorkItem { [weak self] in
-                guard guardBox.tryResume() else { return }
-                let t = self?.timeout ?? 30
-                continuation.resume(throwing: JSEngineError.timeout(fn, t))
+                let onResolve: @convention(block) (JSValue?) -> Void = { value in
+                    guard guardBox.tryResume() else { return }
+                    timeoutItem.cancel()
+                    continuation.resume(returning: Self.stringify(value))
+                }
+                let onReject: @convention(block) (JSValue?) -> Void = { [weak self] err in
+                    guard guardBox.tryResume() else { return }
+                    timeoutItem.cancel()
+                    let msg = err?.toString() ?? "promesse rejetée"
+                    self?.log(.error, "\(fn) rejeté : \(msg)")
+                    continuation.resume(throwing: JSEngineError.jsError(msg))
+                }
+
+                let resolveVal = JSValue(object: onResolve, in: context)
+                let rejectVal = JSValue(object: onReject, in: context)
+                result.invokeMethod("then", withArguments: [resolveVal as Any, rejectVal as Any])
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: timeoutItem)
-
-            let onResolve: @convention(block) (JSValue?) -> Void = { value in
-                guard guardBox.tryResume() else { return }
-                timeoutItem.cancel()
-                continuation.resume(returning: Self.stringify(value))
-            }
-            let onReject: @convention(block) (JSValue?) -> Void = { [weak self] err in
-                guard guardBox.tryResume() else { return }
-                timeoutItem.cancel()
-                let msg = err?.toString() ?? "promesse rejetée"
-                self?.debugLog?.append(.error, "\(fn) rejeté : \(msg)", module: self?.moduleName)
-                continuation.resume(throwing: JSEngineError.jsError(msg))
-            }
-
-            let resolveVal = JSValue(object: onResolve, in: context)
-            let rejectVal = JSValue(object: onReject, in: context)
-            result.invokeMethod("then", withArguments: [resolveVal as Any, rejectVal as Any])
         }
     }
 
@@ -124,13 +131,23 @@ final class JSEngine {
         return value.toString() ?? ""
     }
 
+    /// Journalise vers le buffer de debug (toujours sur le main).
+    private func log(_ kind: LogKind, _ message: String, detail: String? = nil) {
+        let module = moduleName
+        let dl = debugLog
+        DispatchQueue.main.async {
+            dl?.append(kind, message, module: module, detail: detail)
+        }
+    }
+
     // MARK: - Bridge natif
 
     private func installNativeBridge() {
+        let engineQueue = queue
+
         // console
         let logBlock: @convention(block) (String, String) -> Void = { [weak self] level, msg in
-            let kind: LogKind = (level == "error") ? .error : .console
-            self?.debugLog?.append(kind, msg, module: self?.moduleName)
+            self?.log(level == "error" ? .error : .console, msg)
         }
         context.setObject(logBlock, forKeyedSubscript: "__log" as NSString)
 
@@ -147,10 +164,10 @@ final class JSEngine {
         context.setObject(atobBlock, forKeyedSubscript: "atob" as NSString)
         context.setObject(btoaBlock, forKeyedSubscript: "btoa" as NSString)
 
-        // setTimeout
+        // setTimeout : replanifié sur la file du moteur (accès contexte sûr)
         let setTimeoutBlock: @convention(block) (JSValue, Double) -> Void = { cb, ms in
             let delay = (ms.isFinite && ms > 0) ? ms : 0
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay / 1000.0) {
+            engineQueue.asyncAfter(deadline: .now() + delay / 1000.0) {
                 cb.call(withArguments: [])
             }
         }
@@ -163,6 +180,11 @@ final class JSEngine {
         let moduleName = self.moduleName
         weak var debugLog = self.debugLog
         let settings = self.settings
+        let engineQueue = queue
+
+        func logFetch(_ kind: LogKind, _ msg: String, _ detail: String? = nil) {
+            DispatchQueue.main.async { debugLog?.append(kind, msg, module: moduleName, detail: detail) }
+        }
 
         let fetchBlock: @convention(block) (String, JSValue?, JSValue?, JSValue?, JSValue?, JSValue?) -> JSValue? = {
             urlStr, headersVal, methodVal, bodyVal, redirectVal, _ in
@@ -172,7 +194,6 @@ final class JSEngine {
             if let dict = headersVal?.toDictionary() {
                 for (key, value) in dict { headers["\(key)"] = "\(value)" }
             }
-            // User-Agent par défaut si le module n'en fournit pas.
             if !headers.keys.contains(where: { $0.lowercased() == "user-agent" }),
                !settings.defaultUserAgent.isEmpty {
                 headers["User-Agent"] = settings.defaultUserAgent
@@ -185,12 +206,12 @@ final class JSEngine {
             let followRedirects = redirectVal.map { !$0.isBoolean || $0.toBool() } ?? true
 
             let started = Date()
-            debugLog?.append(.fetch, "\(method) \(urlStr)", module: moduleName)
+            logFetch(.fetch, "\(method) \(urlStr)")
 
             // Blocage optionnel des trackers (webhooks Discord).
             if settings.blockWebhooks,
                settings.blockedURLPatterns.contains(where: { urlStr.contains($0) }) {
-                debugLog?.append(.info, "bloqué (webhook) : \(urlStr)", module: moduleName)
+                logFetch(.info, "bloqué (webhook) : \(urlStr)")
                 let obj = JSValue(newObjectIn: context)!
                 obj.setValue(204, forProperty: "status")
                 obj.setValue([String: String](), forProperty: "headers")
@@ -205,29 +226,31 @@ final class JSEngine {
             }
 
             return JSValue(newPromiseIn: context) { resolve, reject in
-                Task { @MainActor in
+                Task.detached {
                     do {
                         let resp = try await NetworkFetch.perform(
                             url: url, headers: headers, method: method,
                             body: body, followRedirects: followRedirects
                         )
                         let ms = Int(Date().timeIntervalSince(started) * 1000)
-                        debugLog?.append(.fetch, "\(resp.status) \(urlStr)",
-                                         module: moduleName, detail: "\(ms) ms · \(resp.body.count) o")
-
+                        logFetch(.fetch, "\(resp.status) \(urlStr)", "\(ms) ms · \(resp.body.count) o")
                         let bodyString = String(data: resp.body, encoding: .utf8)
                             ?? String(decoding: resp.body, as: UTF8.self)
-                        let obj = JSValue(newObjectIn: context)!
-                        obj.setValue(resp.status, forProperty: "status")
-                        obj.setValue(resp.headers, forProperty: "headers")
-                        obj.setValue(bodyString, forProperty: "_body")
-                        obj.setValue(resp.finalURL, forProperty: "url")
-                        resolve?.call(withArguments: [obj])
+                        // Retour sur la file du moteur pour manipuler le contexte JS.
+                        engineQueue.async {
+                            let obj = JSValue(newObjectIn: context)!
+                            obj.setValue(resp.status, forProperty: "status")
+                            obj.setValue(resp.headers, forProperty: "headers")
+                            obj.setValue(bodyString, forProperty: "_body")
+                            obj.setValue(resp.finalURL, forProperty: "url")
+                            resolve?.call(withArguments: [obj])
+                        }
                     } catch {
-                        debugLog?.append(.error, "fetch échoué : \(error.localizedDescription)",
-                                         module: moduleName, detail: urlStr)
-                        let err = JSValue(object: error.localizedDescription, in: context)
-                        reject?.call(withArguments: [err as Any])
+                        logFetch(.error, "fetch échoué : \(error.localizedDescription)", urlStr)
+                        engineQueue.async {
+                            let err = JSValue(object: error.localizedDescription, in: context)
+                            reject?.call(withArguments: [err as Any])
+                        }
                     }
                 }
             }
