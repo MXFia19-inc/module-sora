@@ -7,6 +7,7 @@ struct ModulesListView: View {
 
     @State private var showAddURL = false
     @State private var showQuickAdd = false
+    @State private var showLibrary = false
     @State private var showImporter = false
     @State private var urlText = ""
     @State private var busy = false
@@ -18,7 +19,7 @@ struct ModulesListView: View {
                 ContentUnavailableViewCompat(
                     title: "Aucun module",
                     systemImage: "puzzlepiece.extension",
-                    description: "Ajoutez un module par URL, via la liste rapide, ou importez un fichier."
+                    description: "Ajoutez un module par URL, via une bibliothèque (cufiy…), la liste Luna, ou un fichier."
                 )
             }
             ForEach(store.modules) { module in
@@ -44,7 +45,8 @@ struct ModulesListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button { showAddURL = true } label: { Label("Ajouter par URL", systemImage: "link") }
-                    Button { showQuickAdd = true } label: { Label("Modules MXFia19", systemImage: "star") }
+                    Button { showLibrary = true } label: { Label("Bibliothèques (cufiy…)", systemImage: "books.vertical") }
+                    Button { showQuickAdd = true } label: { Label("Modules Luna (MXFia19)", systemImage: "star") }
                     Button { showImporter = true } label: { Label("Importer un fichier", systemImage: "folder") }
                 } label: {
                     Image(systemName: "plus")
@@ -70,6 +72,9 @@ struct ModulesListView: View {
         }
         .sheet(isPresented: $showQuickAdd) {
             QuickAddView()
+        }
+        .sheet(isPresented: $showLibrary) {
+            LibraryView()
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -179,7 +184,7 @@ private struct QuickAddView: View {
                     }
                 }
             }
-            .navigationTitle("Modules MXFia19")
+            .navigationTitle("Modules Luna")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { Button("Fermer") { dismiss() } }

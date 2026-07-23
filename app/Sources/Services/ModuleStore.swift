@@ -1,10 +1,17 @@
 import Foundation
 
-/// Un module par défaut proposé en ajout rapide (les 8 modules de MXFia19).
+/// Un module par défaut proposé en ajout rapide.
 struct DefaultModule: Identifiable, Hashable {
     var name: String
     var manifestUrl: String
     var id: String { manifestUrl }
+}
+
+/// Une bibliothèque : un index JSON qui liste des modules à ajouter.
+struct ModuleLibrarySource: Identifiable, Hashable {
+    var name: String
+    var url: String
+    var id: String { url }
 }
 
 enum ModuleStoreError: LocalizedError {
@@ -31,18 +38,25 @@ final class ModuleStore: ObservableObject {
 
     private let fileURL: URL
 
-    /// Les 8 modules connus de MXFia19 (ajout en un tap).
+    /// Modules connus de MXFia19 sur la source Luna (ajout en un tap).
+    /// Pattern : `…/raw/branch/main/<dossier>/<dossier>.json`.
     static let defaults: [DefaultModule] = {
-        let base = "https://raw.githubusercontent.com/MXFia19/module-sora/main"
+        let base = "https://git.luna-app.eu/MXFia19/sources/raw/branch/main"
         let folders = [
-            "anime sama", "anime ultra", "hostcord", "movix",
-            "nakios", "purstream", "voir anime", "wavewatch",
+            "aether", "anime-sama", "anime-ultra", "bingebox", "cinepulse",
+            "dessin-anime", "livewatch", "miruro", "movix", "nakanime",
+            "Nakastream", "nakios", "purstream", "scan-sama", "twitch-no-sub",
+            "voir-anime",
         ]
         return folders.map { folder in
-            let enc = folder.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? folder
-            return DefaultModule(name: folder, manifestUrl: "\(base)/\(enc)/\(enc).json")
+            DefaultModule(name: folder, manifestUrl: "\(base)/\(folder)/\(folder).json")
         }
     }()
+
+    /// Bibliothèques proposées par défaut (index JSON de modules).
+    static let defaultLibraries: [ModuleLibrarySource] = [
+        ModuleLibrarySource(name: "Cufiy", url: "https://library.cufiy.net/api/modules.min.json"),
+    ]
 
     init() {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -102,6 +116,31 @@ final class ModuleStore: ObservableObject {
         let module = LoadedModule(manifest: manifest, scriptContent: script, addedAt: Date())
         upsert(module)
         return module
+    }
+
+    /// Ajoute un module à partir d'un manifest déjà décodé (télécharge son script).
+    /// Utilisé par les entrées de bibliothèque qui embarquent le manifest inline.
+    @discardableResult
+    func add(manifest: ModuleManifest) async throws -> LoadedModule {
+        guard let scriptURL = URL(string: manifest.scriptUrl) else {
+            throw ModuleStoreError.badScriptURL
+        }
+        let scriptData = try await fetchData(scriptURL)
+        let module = LoadedModule(
+            manifest: manifest,
+            scriptContent: String(decoding: scriptData, as: UTF8.self),
+            addedAt: Date()
+        )
+        upsert(module)
+        return module
+    }
+
+    /// Télécharge des données brutes (partagé avec le chargeur de bibliothèque).
+    func data(from urlString: String) async throws -> Data {
+        guard let url = URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            throw ModuleStoreError.badManifestURL
+        }
+        return try await fetchData(url)
     }
 
     /// Re-télécharge le manifest et le script d'un module déjà installé.
