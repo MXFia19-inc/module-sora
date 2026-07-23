@@ -33,10 +33,13 @@ final class MassTester: ObservableObject {
         reports[index].startedAt = Date()
         let keyword = reports[index].keyword
 
+        // Coupe l'activité de fond du module quand le test est fini (timers, ping…).
+        var runnerOpt: ModuleRunner?
+        defer { runnerOpt?.dispose() }
+
         // 1. Chargement (évaluation du script).
-        let runner: ModuleRunner
         do {
-            runner = try await timed(index, "Chargement") {
+            runnerOpt = try await timed(index, "Chargement") {
                 try ModuleRunner(module: self.reports[index].module, debugLog: debugLog, settings: settings)
             }
         } catch {
@@ -44,6 +47,7 @@ final class MassTester: ObservableObject {
             skipFrom(index, "Recherche")
             return
         }
+        guard let runner = runnerOpt else { return }
 
         // 2. Recherche.
         var firstHref: String?
@@ -113,6 +117,36 @@ final class MassTester: ObservableObject {
             }
         } catch {
             fail(index, "Flux", error)
+        }
+    }
+
+    /// Nombre de modules dont le test est un succès complet.
+    var okCount: Int { reports.filter { $0.overall == .success }.count }
+
+    /// Rapport texte exportable (copier / partager).
+    func reportText() -> String {
+        var out = "Rapport de test — \(okCount)/\(reports.count) module(s) OK\n"
+        out += "\(Date().formatted())\n\n"
+        for r in reports {
+            out += "• \(r.module.name)  [\(r.category.label)] · mot-clé « \(r.keyword) »  → \(symbol(r.overall))\n"
+            for s in r.steps {
+                out += "    \(symbol(s.status)) \(s.name)"
+                if let ms = s.durationMs { out += " (\(ms) ms)" }
+                if let d = s.detail { out += " — \(d)" }
+                out += "\n"
+            }
+            out += "\n"
+        }
+        return out
+    }
+
+    private func symbol(_ status: StepStatus) -> String {
+        switch status {
+        case .success: return "✅"
+        case .failure: return "❌"
+        case .skipped: return "⊘"
+        case .running: return "⏳"
+        case .pending: return "•"
         }
     }
 

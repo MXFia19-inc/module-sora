@@ -178,6 +178,31 @@ final class ModuleStore: ObservableObject {
         return module
     }
 
+    /// Crée (ou écrase) un module à partir de code JS collé.
+    /// Si `overwriting` est fourni, remplace son script en conservant son identité
+    /// (utile pour tester une version locale d'un module déjà installé).
+    @discardableResult
+    func addPasted(name: String, type: String?, language: String?, script: String,
+                   overwriting existing: LoadedModule?) -> LoadedModule {
+        let module: LoadedModule
+        if let existing {
+            var updated = existing
+            updated.scriptContent = script
+            updated.addedAt = Date()
+            module = updated
+        } else {
+            let manifest = ModuleManifest(
+                sourceName: name.isEmpty ? "Module local" : name,
+                scriptUrl: "local://\(UUID().uuidString)",
+                type: (type?.isEmpty == false) ? type : nil,
+                language: (language?.isEmpty == false) ? language : nil
+            )
+            module = LoadedModule(manifest: manifest, scriptContent: script, addedAt: Date())
+        }
+        upsert(module)
+        return module
+    }
+
     // MARK: - Réseau
 
     private func fetchData(_ url: URL) async throws -> Data {

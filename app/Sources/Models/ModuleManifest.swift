@@ -33,6 +33,27 @@ struct ModuleManifest: Codable, Identifiable, Hashable {
     /// Identité stable : dérivée du scriptUrl.
     var id: String { scriptUrl }
 
+    /// Initialiseur programmatique (modules créés localement, code collé…).
+    init(sourceName: String, version: String = "local", scriptUrl: String,
+         type: String? = nil, language: String? = nil, iconUrl: String? = nil,
+         manifestUrl: String? = nil) {
+        self.sourceName = sourceName
+        self.version = version
+        self.scriptUrl = scriptUrl
+        self.type = type
+        self.language = language
+        self.iconUrl = iconUrl
+        self.manifestUrl = manifestUrl
+        self.author = nil
+        self.streamType = nil
+        self.quality = nil
+        self.baseUrl = nil
+        self.searchBaseUrl = nil
+        self.downloadSupport = nil
+        self.asyncJS = true
+        self.softsub = nil
+    }
+
     // MARK: - Décodage tolérant
 
     private enum CodingKeys: String, CodingKey {

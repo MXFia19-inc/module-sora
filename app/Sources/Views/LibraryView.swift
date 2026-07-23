@@ -11,6 +11,19 @@ struct LibraryView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var busyKey: String?
+    @State private var languageFilter: String?
+
+    /// Langues distinctes présentes dans l'index (triées).
+    private var languages: [String] {
+        Array(Set(entries.compactMap { $0.language })).sorted()
+    }
+
+    /// Entrées filtrées par langue, triées par popularité décroissante.
+    private var filteredEntries: [LibraryModuleEntry] {
+        entries
+            .filter { languageFilter == nil || $0.language == languageFilter }
+            .sorted { ($0.installCount ?? 0) > ($1.installCount ?? 0) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -37,14 +50,34 @@ struct LibraryView: View {
                 }
 
                 if !entries.isEmpty {
-                    Section("Modules (\(entries.count))") {
-                        ForEach(entries) { entry in
+                    Section {
+                        ForEach(filteredEntries) { entry in
                             LibraryRow(
                                 entry: entry,
                                 installed: isInstalled(entry),
                                 busy: busyKey == entry.installKey,
                                 add: { Task { await add(entry) } }
                             )
+                        }
+                    } header: {
+                        HStack {
+                            Text("Modules (\(filteredEntries.count))")
+                            Spacer()
+                            if !languages.isEmpty {
+                                Menu {
+                                    Button("Toutes les langues") { languageFilter = nil }
+                                    ForEach(languages, id: \.self) { lang in
+                                        Button(lang) { languageFilter = lang }
+                                    }
+                                } label: {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "globe")
+                                        Text(languageFilter ?? "Langue")
+                                    }
+                                    .font(.caption)
+                                    .textCase(nil)
+                                }
+                            }
                         }
                     }
                 }
@@ -111,9 +144,9 @@ private struct LibraryRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name).font(.subheadline).lineLimit(1)
                 HStack(spacing: 6) {
-                    if let v = entry.version { Text("v\(v)") }
+                    if let l = entry.language { Text(l) }
                     if let t = entry.type { Text("· \(t)") }
-                    if let a = entry.author { Text("· \(a)") }
+                    if let n = entry.installCount { Text("· \(n) inst.") }
                 }
                 .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }

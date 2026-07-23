@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Testeur en masse : sélection de modules, mots-clés par type, exécution du
 /// pipeline pour chacun, avec statut par étape et logs séparés par module.
@@ -122,6 +123,24 @@ struct MassTestView: View {
 
     private var resultsSection: some View {
         Section("Résultats") {
+            HStack {
+                Label("\(tester.okCount)/\(tester.reports.count) modules OK",
+                      systemImage: tester.okCount == tester.reports.count
+                        ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(tester.okCount == tester.reports.count ? .green : .orange)
+                    .font(.subheadline)
+                Spacer()
+                ShareLink(item: tester.reportText()) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .buttonStyle(.borderless)
+                Button {
+                    UIPasteboard.general.string = tester.reportText()
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                }
+                .buttonStyle(.borderless)
+            }
             ForEach(tester.reports) { report in
                 NavigationLink {
                     ReportDetailView(report: report)

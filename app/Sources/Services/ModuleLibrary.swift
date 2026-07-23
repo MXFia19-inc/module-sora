@@ -8,6 +8,8 @@ struct LibraryModuleEntry: Identifiable {
     var version: String? = nil
     var author: String? = nil
     var type: String? = nil
+    var language: String? = nil
+    var installCount: Int? = nil
     /// URL d'un manifest `.json` à télécharger (cas « liste d'URLs »).
     var manifestURL: String? = nil
     /// Manifest embarqué directement dans l'entrée (cas « liste de manifests »).
@@ -51,13 +53,16 @@ enum ModuleLibrary {
             let version = str(d["version"])
             let author = str(d["author"]) ?? ((d["author"] as? [String: Any]).flatMap { str($0["name"]) })
             let type = str(d["type"])
+            let language = str(d["language"]) ?? str(d["lang"])
+            let installCount = (d["installCount"] as? Int) ?? (d["installCount"] as? NSNumber)?.intValue
 
             // Cas 1 : le manifest est embarqué (présence d'un scriptUrl/scriptURL).
             if d["scriptUrl"] != nil || d["scriptURL"] != nil,
                let raw = try? JSONSerialization.data(withJSONObject: d),
                let manifest = try? JSONDecoder().decode(ModuleManifest.self, from: raw) {
                 return LibraryModuleEntry(name: name, icon: icon, version: version,
-                                          author: author, type: type, inlineManifest: manifest)
+                                          author: author, type: type, language: language,
+                                          installCount: installCount, inlineManifest: manifest)
             }
 
             // Cas 2 : l'entrée pointe vers une URL de manifest.
@@ -65,7 +70,8 @@ enum ModuleLibrary {
                 ?? str(d["module"]) ?? str(d["moduleURL"]) ?? str(d["json"]) ?? str(d["metadata"])
             guard let manifestURL, manifestURL.contains("://") else { return nil }
             return LibraryModuleEntry(name: name, icon: icon, version: version,
-                                      author: author, type: type, manifestURL: manifestURL)
+                                      author: author, type: type, language: language,
+                                      installCount: installCount, manifestURL: manifestURL)
         }
     }
 

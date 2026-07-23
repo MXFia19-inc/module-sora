@@ -20,6 +20,11 @@ final class ModuleRunner {
         try engine.evaluate(script: module.scriptContent)
     }
 
+    /// Coupe l'activité de fond du module (timers, requêtes) une fois inutile.
+    func dispose() {
+        engine.dispose()
+    }
+
     // MARK: - Fonctions du contrat
 
     func search(_ keyword: String) async throws -> RunResult<[SearchItem]> {

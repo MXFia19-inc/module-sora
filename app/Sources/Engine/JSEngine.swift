@@ -19,6 +19,12 @@ enum JSEngineError: LocalizedError {
     }
 }
 
+/// Drapeau de libération partagé entre le moteur et ses blocs natifs
+/// (timers, fetch) sans créer de cycle de rétention avec le contexte.
+private final class DisposeFlag {
+    var value = false
+}
+
 /// Garde-fou pour ne reprendre une continuation qu'une seule fois.
 private final class ResumeGuard {
     private var done = false
@@ -43,6 +49,7 @@ final class JSEngine {
     private weak var debugLog: DebugLog?
     private let settings: AppSettings
     private let queue: DispatchQueue
+    private let disposeFlag = DisposeFlag()
 
     private var timeout: Double { max(1, settings.jsTimeout) }
 
@@ -142,8 +149,18 @@ final class JSEngine {
 
     // MARK: - Bridge natif
 
+    /// Coupe l'activité de fond du module : les timers et fetch en cours
+    /// n'exécutent plus rien côté JS. À appeler quand le module n'est plus utilisé.
+    func dispose() {
+        queue.async { [disposeFlag, context] in
+            disposeFlag.value = true
+            context.exceptionHandler = nil
+        }
+    }
+
     private func installNativeBridge() {
         let engineQueue = queue
+        let disposeFlag = self.disposeFlag
 
         // console
         let logBlock: @convention(block) (String, String) -> Void = { [weak self] level, msg in
@@ -168,6 +185,7 @@ final class JSEngine {
         let setTimeoutBlock: @convention(block) (JSValue, Double) -> Void = { cb, ms in
             let delay = (ms.isFinite && ms > 0) ? ms : 0
             engineQueue.asyncAfter(deadline: .now() + delay / 1000.0) {
+                guard !disposeFlag.value else { return }
                 cb.call(withArguments: [])
             }
         }
@@ -181,6 +199,7 @@ final class JSEngine {
         weak var debugLog = self.debugLog
         let settings = self.settings
         let engineQueue = queue
+        let disposeFlag = self.disposeFlag
 
         func logFetch(_ kind: LogKind, _ msg: String, _ detail: String? = nil) {
             DispatchQueue.main.async { debugLog?.append(kind, msg, module: moduleName, detail: detail) }
@@ -238,6 +257,7 @@ final class JSEngine {
                             ?? String(decoding: resp.body, as: UTF8.self)
                         // Retour sur la file du moteur pour manipuler le contexte JS.
                         engineQueue.async {
+                            guard !disposeFlag.value else { return }
                             let obj = JSValue(newObjectIn: context)!
                             obj.setValue(resp.status, forProperty: "status")
                             obj.setValue(resp.headers, forProperty: "headers")

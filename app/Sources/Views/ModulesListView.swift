@@ -8,6 +8,7 @@ struct ModulesListView: View {
     @State private var showAddURL = false
     @State private var showQuickAdd = false
     @State private var showLibrary = false
+    @State private var showPaste = false
     @State private var showImporter = false
     @State private var urlText = ""
     @State private var busy = false
@@ -47,6 +48,7 @@ struct ModulesListView: View {
                     Button { showAddURL = true } label: { Label("Ajouter par URL", systemImage: "link") }
                     Button { showLibrary = true } label: { Label("Bibliothèques (cufiy…)", systemImage: "books.vertical") }
                     Button { showQuickAdd = true } label: { Label("Modules Luna (MXFia19)", systemImage: "star") }
+                    Button { showPaste = true } label: { Label("Coller du code (local)", systemImage: "curlybraces.square") }
                     Button { showImporter = true } label: { Label("Importer un fichier", systemImage: "folder") }
                 } label: {
                     Image(systemName: "plus")
@@ -75,6 +77,9 @@ struct ModulesListView: View {
         }
         .sheet(isPresented: $showLibrary) {
             LibraryView()
+        }
+        .sheet(isPresented: $showPaste) {
+            PasteModuleView()
         }
         .fileImporter(
             isPresented: $showImporter,
