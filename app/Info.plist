@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ── App ───────────────────────────────────────────────── -->
+    <key>CFBundleName</key>
+    <string>ModuleTester</string>
+    <key>CFBundleDisplayName</key>
+    <string>Module Tester</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.mxfia19.ModuleTester</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <!-- ── Background Modes (audio + PiP) ────────────────────── -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+
+    <!-- ── Schémas d'apps externes (liste blanche canOpenURL) ── -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>vlc</string>
+        <string>infuse</string>
+        <string>outplayer</string>
+    </array>
+
+    <!-- ── Import de fichiers modules (.json/.js) ─────────────── -->
+    <key>UISupportsDocumentBrowser</key>
+    <false/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+
+    <!-- ── ATS : les modules visent des hôtes arbitraires ────── -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+
+    <!-- ── Orientation ────────────────────────────────────────── -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- ── Launch screen ─────────────────────────────────────── -->
+    <key>UILaunchScreen</key>
+    <dict/>
+</dict>
+</plist>

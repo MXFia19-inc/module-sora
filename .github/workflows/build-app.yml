@@ -1,0 +1,78 @@
+name: Build ModuleTester (app)
+
+on:
+  push:
+    branches:
+      - main
+      - claude/ios-modular-app-2i7yt7
+    paths:
+      - "app/**"
+      - ".github/workflows/build-app.yml"
+  workflow_dispatch:
+
+jobs:
+  # Smoke test du contrat des modules (informatif : dépend de la disponibilité des sites).
+  contract-smoke:
+    name: Smoke test des modules
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Vérifier le contrat des modules
+        run: node app/tools/smoke.mjs --all "one piece"
+
+  build-ios:
+    name: Build iOS IPA (non signé)
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Variables de release
+        id: vars
+        run: |
+          echo "version=1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "tag=app-nightly-${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Installer XcodeGen
+        run: brew install xcodegen
+
+      - name: Injecter la version dans project.yml
+        run: |
+          sed -i '' "s/PRODUCT_NAME: ModuleTester/PRODUCT_NAME: ModuleTester\n        MARKETING_VERSION: ${{ steps.vars.outputs.version }}\n        CURRENT_PROJECT_VERSION: ${{ github.run_number }}/g" project.yml
+
+      - name: Générer le projet Xcode
+        run: xcodegen generate --spec project.yml
+
+      - name: Patcher Info.plist (version)
+        run: |
+          plutil -replace CFBundleShortVersionString -string "${{ steps.vars.outputs.version }}" Info.plist
+          plutil -replace CFBundleVersion -string "${{ github.run_number }}" Info.plist
+
+      - name: Build IPA
+        run: |
+          chmod +x ./buildipa.sh
+          ./buildipa.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ModuleTester-IPA
+          path: app/build/ModuleTester.ipa
+
+      - name: Créer la release nightly
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.vars.outputs.tag }}" build/ModuleTester.ipa \
+            --title "ModuleTester ${{ steps.vars.outputs.version }}" \
+            --notes "Build automatique le ${{ steps.vars.outputs.date }} (app de test des modules)."
