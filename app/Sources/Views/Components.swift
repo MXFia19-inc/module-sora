@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Image distante avec placeholder (iOS 16 : AsyncImage).
 ///
@@ -52,6 +53,27 @@ struct ContentUnavailableViewCompat: View {
         .padding(.vertical, 40)
         .listRowSeparator(.hidden)
     }
+}
+
+/// Ajoute un bouton « Terminé » au-dessus du clavier pour en sortir
+/// (évite de rester coincé dans un champ texte / TextEditor).
+struct KeyboardDoneToolbar: ViewModifier {
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Terminé") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+                    )
+                }
+            }
+        }
+    }
+}
+
+extension View {
+    func keyboardDoneToolbar() -> some View { modifier(KeyboardDoneToolbar()) }
 }
 
 /// Bannière d'erreur inline.

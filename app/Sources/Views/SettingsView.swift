@@ -59,5 +59,6 @@ struct SettingsView: View {
         }
         .navigationTitle("Réglages")
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardDoneToolbar()
     }
 }

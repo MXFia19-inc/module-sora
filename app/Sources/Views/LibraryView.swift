@@ -51,6 +51,7 @@ struct LibraryView: View {
             }
             .navigationTitle("Bibliothèques")
             .navigationBarTitleDisplayMode(.inline)
+            .keyboardDoneToolbar()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { Button("Fermer") { dismiss() } }
             }

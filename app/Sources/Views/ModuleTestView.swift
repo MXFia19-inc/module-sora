@@ -84,7 +84,12 @@ struct ModuleTestView: View {
         }
         .navigationTitle(module.name)
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(text: $session.query, prompt: "Rechercher dans \(module.name)")
+        .searchable(
+            text: $session.query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Rechercher dans \(module.name)"
+        )
+        .keyboardDoneToolbar()
         .onSubmit(of: .search) { Task { await session.search() } }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
