@@ -207,6 +207,7 @@ private struct ReportRow: View {
 private struct ReportDetailView: View {
     let report: ModuleTestReport
     @EnvironmentObject private var debugLog: DebugLog
+    @State private var jsonSheet: RawJSONPayload?
 
     private var logs: [LogEntry] {
         let start = report.startedAt ?? .distantPast
@@ -237,6 +238,15 @@ private struct ReportDetailView: View {
                                     .font(.caption)
                                     .foregroundStyle(step.status == .failure ? .red : .secondary)
                             }
+                            if let raw = step.raw, !raw.isEmpty {
+                                Button {
+                                    jsonSheet = RawJSONPayload(title: step.name, raw: raw)
+                                } label: {
+                                    Label("Voir le JSON", systemImage: "curlybraces")
+                                        .font(.caption2)
+                                }
+                                .buttonStyle(.borderless)
+                            }
                         }
                     }
                 }
@@ -264,5 +274,8 @@ private struct ReportDetailView: View {
         }
         .navigationTitle(report.module.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $jsonSheet) { payload in
+            RawJSONView(title: payload.title, raw: payload.raw)
+        }
     }
 }

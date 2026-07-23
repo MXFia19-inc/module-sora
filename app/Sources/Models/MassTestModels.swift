@@ -62,6 +62,8 @@ struct TestStep: Identifiable {
     var status: StepStatus = .pending
     var detail: String?
     var durationMs: Int?
+    /// JSON brut renvoyé par la fonction du module pour cette étape.
+    var raw: String?
     var id: String { name }
 }
 

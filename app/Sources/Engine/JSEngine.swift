@@ -72,7 +72,15 @@ final class JSEngine {
     func evaluate(script: String) throws {
         try queue.sync {
             context.exceptionHandler = { [weak self] _, exception in
-                let msg = exception?.toString() ?? "exception JS"
+                var msg = exception?.toString() ?? "exception JS"
+                if let ex = exception,
+                   let line = ex.objectForKeyedSubscript("line"), !line.isUndefined {
+                    msg += " (ligne \(line.toInt32())"
+                    if let col = ex.objectForKeyedSubscript("column"), !col.isUndefined {
+                        msg += ", col \(col.toInt32())"
+                    }
+                    msg += ")"
+                }
                 self?.lastException = msg
                 self?.log(.error, msg)
             }

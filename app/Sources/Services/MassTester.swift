@@ -54,6 +54,7 @@ final class MassTester: ObservableObject {
         var firstHref: String?
         do {
             let result = try await timed(index, "Recherche") { try await runner.search(keyword) }
+            setRaw(index, "Recherche", result.raw)
             if let first = result.value.first {
                 firstHref = first.href
                 success(index, "Recherche", "\(result.value.count) résultat(s) · « \(first.title) »")
@@ -72,6 +73,7 @@ final class MassTester: ObservableObject {
         // 3. Détails.
         do {
             let result = try await timed(index, "Détails") { try await runner.details(href) }
+            setRaw(index, "Détails", result.raw)
             let d = result.value
             let hasContent = d.description != "N/A" || d.aliases != "N/A" || d.airdate != "N/A"
             if hasContent {
@@ -88,6 +90,7 @@ final class MassTester: ObservableObject {
         let category = reports[index].category
         do {
             let result = try await timed(index, "Épisodes") { try await runner.episodes(href) }
+            setRaw(index, "Épisodes", result.raw)
             if !result.value.isEmpty {
                 targetEpisode = pickEpisode(result.value, category: category,
                                             serieEpisode: settings.serieEpisode)
@@ -111,6 +114,7 @@ final class MassTester: ObservableObject {
         // 5. Flux.
         do {
             let result = try await timed(index, "Flux") { try await runner.streams(episodeHref) }
+            setRaw(index, "Flux", result.raw)
             if let first = result.value.streams.first {
                 success(index, "Flux", "\(result.value.streams.count) flux · « \(first.title) »")
             } else {
@@ -178,6 +182,11 @@ final class MassTester: ObservableObject {
     private func setDuration(_ index: Int, _ step: String, _ ms: Int) {
         guard let i = reports[index].steps.firstIndex(where: { $0.name == step }) else { return }
         reports[index].steps[i].durationMs = ms
+    }
+
+    private func setRaw(_ index: Int, _ step: String, _ raw: String) {
+        guard let i = reports[index].steps.firstIndex(where: { $0.name == step }) else { return }
+        reports[index].steps[i].raw = raw
     }
 
     private func success(_ index: Int, _ step: String, _ detail: String?) {
