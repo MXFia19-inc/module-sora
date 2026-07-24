@@ -27,6 +27,18 @@ final class MassTester: ObservableObject {
         isRunning = false
     }
 
+    /// Relance un seul module (réinitialise ses étapes) sans toucher aux autres.
+    func runSingle(reportId: String, debugLog: DebugLog, settings: AppSettings) async {
+        guard !isRunning, let index = reports.firstIndex(where: { $0.id == reportId }) else { return }
+        isRunning = true
+        let old = reports[index]
+        reports[index] = ModuleTestReport(module: old.module, category: old.category, keyword: old.keyword)
+        currentIndex = index
+        await runOne(index: index, debugLog: debugLog, settings: settings)
+        currentIndex = nil
+        isRunning = false
+    }
+
     // MARK: - Pipeline
 
     private func runOne(index: Int, debugLog: DebugLog, settings: AppSettings) async {
@@ -143,6 +155,36 @@ final class MassTester: ObservableObject {
             out += "\n"
         }
         return out
+    }
+
+    /// Rapport structuré en JSON (export fichier).
+    func reportJSON() -> String {
+        let arr: [[String: Any]] = reports.map { r in
+            var steps: [[String: Any]] = []
+            for s in r.steps {
+                var step: [String: Any] = ["name": s.name, "status": s.status.rawValue]
+                if let ms = s.durationMs { step["durationMs"] = ms }
+                if let d = s.detail { step["detail"] = d }
+                if let raw = s.raw { step["raw"] = raw }
+                steps.append(step)
+            }
+            return [
+                "module": r.module.name,
+                "category": r.category.label,
+                "keyword": r.keyword,
+                "overall": r.overall.rawValue,
+                "steps": steps,
+            ]
+        }
+        let root: [String: Any] = [
+            "date": ISO8601DateFormatter().string(from: Date()),
+            "okCount": okCount,
+            "total": reports.count,
+            "reports": arr,
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .withoutEscapingSlashes]),
+              let s = String(data: data, encoding: .utf8) else { return "{}" }
+        return s
     }
 
     private func symbol(_ status: StepStatus) -> String {

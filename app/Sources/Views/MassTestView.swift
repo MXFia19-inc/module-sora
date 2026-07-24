@@ -12,6 +12,7 @@ struct MassTestView: View {
     @State private var selected: Set<String> = []
     /// Catégorie choisie manuellement par id de module (absent = Auto).
     @State private var overrides: [String: TestCategory] = [:]
+    @State private var sharePayload: SharePayload?
 
     var body: some View {
         Form {
@@ -23,6 +24,9 @@ struct MassTestView: View {
         .navigationTitle("Test en masse")
         .navigationBarTitleDisplayMode(.inline)
         .keyboardDoneToolbar()
+        .sheet(item: $sharePayload) { payload in
+            ShareSheet(items: [payload.url])
+        }
         .onAppear {
             if selected.isEmpty { selected = Set(store.modules.map(\.id)) }
         }
@@ -130,25 +134,42 @@ struct MassTestView: View {
                     .foregroundStyle(tester.okCount == tester.reports.count ? .green : .orange)
                     .font(.subheadline)
                 Spacer()
-                ShareLink(item: tester.reportText()) {
-                    Image(systemName: "square.and.arrow.up")
-                }
-                .buttonStyle(.borderless)
-                Button {
-                    UIPasteboard.general.string = tester.reportText()
+                Menu {
+                    Button {
+                        UIPasteboard.general.string = tester.reportText()
+                    } label: { Label("Copier (texte)", systemImage: "doc.on.doc") }
+                    Button {
+                        exportFile(tester.reportText(), ext: "txt")
+                    } label: { Label("Partager .txt", systemImage: "doc.text") }
+                    Button {
+                        exportFile(tester.reportJSON(), ext: "json")
+                    } label: { Label("Partager .json", systemImage: "curlybraces") }
                 } label: {
-                    Image(systemName: "doc.on.doc")
+                    Image(systemName: "square.and.arrow.up")
                 }
                 .buttonStyle(.borderless)
             }
             ForEach(tester.reports) { report in
                 NavigationLink {
-                    ReportDetailView(report: report)
+                    ReportDetailView(reportId: report.id)
                 } label: {
                     ReportRow(report: report)
                 }
+                .contextMenu {
+                    Button {
+                        Task { await tester.runSingle(reportId: report.id, debugLog: debugLog, settings: settings) }
+                    } label: { Label("Relancer ce module", systemImage: "arrow.clockwise") }
+                    .disabled(tester.isRunning)
+                }
             }
         }
+    }
+
+    private func exportFile(_ text: String, ext: String) {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rapport-test-modules.\(ext)")
+        try? text.data(using: .utf8)?.write(to: url)
+        sharePayload = SharePayload(url: url)
     }
 
     private func toggle(_ id: String) {
@@ -205,18 +226,22 @@ private struct ReportRow: View {
 
 /// Détail d'un rapport : étapes + logs du module durant ce test.
 private struct ReportDetailView: View {
-    let report: ModuleTestReport
+    let reportId: String
+    @EnvironmentObject private var tester: MassTester
     @EnvironmentObject private var debugLog: DebugLog
+    @EnvironmentObject private var settings: AppSettings
     @State private var jsonSheet: RawJSONPayload?
 
-    private var logs: [LogEntry] {
+    private var report: ModuleTestReport? { tester.reports.first { $0.id == reportId } }
+
+    private func logs(_ report: ModuleTestReport) -> [LogEntry] {
         let start = report.startedAt ?? .distantPast
         return debugLog.entries.filter { $0.module == report.module.name && $0.date >= start }
     }
 
     /// Si le Chargement a échoué avec une erreur de syntaxe localisée (« ligne N »),
     /// extrait les lignes de code autour du point fautif.
-    private var syntaxSnippet: (fault: Int, lines: [(Int, String)])? {
+    private func syntaxSnippet(_ report: ModuleTestReport) -> (fault: Int, lines: [(Int, String)])? {
         guard let load = report.steps.first(where: { $0.name == "Chargement" }),
               load.status == .failure, let detail = load.detail,
               let range = detail.range(of: #"ligne (\d+)"#, options: .regularExpression),
@@ -228,6 +253,22 @@ private struct ReportDetailView: View {
     }
 
     var body: some View {
+        Group {
+            if let report {
+                content(report)
+            } else {
+                Text("Rapport indisponible.").foregroundStyle(.secondary)
+            }
+        }
+        .sheet(item: $jsonSheet) { payload in
+            RawJSONView(title: payload.title, raw: payload.raw)
+        }
+    }
+
+    @ViewBuilder
+    private func content(_ report: ModuleTestReport) -> some View {
+        let logs = logs(report)
+        let syntaxSnippet = syntaxSnippet(report)
         List {
             Section {
                 LabeledContent("Type", value: report.category.label)
@@ -318,8 +359,15 @@ private struct ReportDetailView: View {
         }
         .navigationTitle(report.module.name)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $jsonSheet) { payload in
-            RawJSONView(title: payload.title, raw: payload.raw)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await tester.runSingle(reportId: reportId, debugLog: debugLog, settings: settings) }
+                } label: {
+                    Label("Relancer", systemImage: "arrow.clockwise")
+                }
+                .disabled(tester.isRunning)
+            }
         }
     }
 }

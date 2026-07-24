@@ -76,6 +76,21 @@ extension View {
     func keyboardDoneToolbar() -> some View { modifier(KeyboardDoneToolbar()) }
 }
 
+/// Feuille de partage native (fichiers, texte…).
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// Payload identifiable pour présenter un partage de fichier via `.sheet(item:)`.
+struct SharePayload: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
 /// Bannière d'erreur inline.
 struct ErrorBanner: View {
     let message: String
