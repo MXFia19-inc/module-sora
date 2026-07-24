@@ -5,10 +5,32 @@ import UIKit
 struct LogsView: View {
     @EnvironmentObject private var debugLog: DebugLog
     @State private var filter: LogKind?
+    @State private var moduleFilter: String?
+    @State private var searchText = ""
+    @State private var replayRequest: LoggedRequest?
+
+    /// Modules distincts présents dans les logs.
+    private var modules: [String] {
+        Array(Set(debugLog.entries.compactMap { $0.module })).sorted()
+    }
 
     private var entries: [LogEntry] {
-        guard let filter else { return debugLog.entries }
-        return debugLog.entries.filter { $0.kind == filter }
+        debugLog.entries.filter { entry in
+            // Filtre par type ("Réseau" inclut les requêtes ET les bloquées).
+            let kindOK: Bool
+            switch filter {
+            case nil: kindOK = true
+            case .fetch: kindOK = (entry.kind == .fetch || entry.kind == .blocked)
+            case let f?: kindOK = entry.kind == f
+            }
+            guard kindOK else { return false }
+            if let moduleFilter, entry.module != moduleFilter { return false }
+            if !searchText.isEmpty {
+                let hay = "\(entry.message) \(entry.detail ?? "") \(entry.module ?? "")".lowercased()
+                if !hay.contains(searchText.lowercased()) { return false }
+            }
+            return true
+        }
     }
 
     var body: some View {
@@ -25,43 +47,64 @@ struct LogsView: View {
 
             if entries.isEmpty {
                 Spacer()
-                Text("Aucun log pour le moment.").foregroundStyle(.secondary)
+                Text("Aucun log.").foregroundStyle(.secondary)
                 Spacer()
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 4) {
                             ForEach(entries) { entry in
-                                LogRow(entry: entry).id(entry.id)
+                                LogRow(entry: entry, onReplay: { replayRequest = entry.request })
+                                    .id(entry.id)
                             }
                         }
                         .padding(.horizontal)
                     }
                     .onChange(of: debugLog.entries.count) { _ in
-                        if let last = entries.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
+                        if searchText.isEmpty, let last = entries.last {
+                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Logs")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: "Filtrer (texte, URL, code HTTP…)")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    UIPasteboard.general.string = entries.map(\.plain).joined(separator: "\n")
-                } label: { Image(systemName: "doc.on.doc") }
-            }
             ToolbarItem(placement: .topBarLeading) {
                 Button(role: .destructive) { debugLog.clear() } label: {
                     Image(systemName: "trash")
                 }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Picker("Module", selection: $moduleFilter) {
+                        Text("Tous les modules").tag(String?.none)
+                        ForEach(modules, id: \.self) { m in Text(m).tag(String?.some(m)) }
+                    }
+                    Button {
+                        UIPasteboard.general.string = entries.map(\.plain).joined(separator: "\n")
+                    } label: { Label("Copier tout (filtré)", systemImage: "doc.on.doc") }
+                } label: {
+                    Image(systemName: moduleFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                }
+            }
+        }
+        .sheet(item: $replayRequest) { request in
+            RequestReplayView(request: request)
         }
     }
 }
 
+extension LoggedRequest: Identifiable {
+    var id: String { "\(method)|\(url)|\(headers.count)|\(body?.count ?? 0)" }
+}
+
 private struct LogRow: View {
     let entry: LogEntry
+    var onReplay: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -71,11 +114,16 @@ private struct LogRow: View {
                 if let m = entry.module {
                     Text(m).font(.caption2).foregroundStyle(.tertiary)
                 }
+                if entry.kind == .blocked {
+                    Text("BLOQUÉ").font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(.orange.opacity(0.15), in: Capsule())
+                }
             }
             Text(entry.message)
                 .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(entry.kind == .error ? .red : .primary)
-                .textSelection(.enabled)
+                .foregroundStyle(entry.kind == .error ? .red : (entry.kind == .blocked ? .orange : .primary))
             if let detail = entry.detail {
                 Text(detail).font(.caption2).foregroundStyle(.secondary)
             }
@@ -90,6 +138,11 @@ private struct LogRow: View {
             Button {
                 UIPasteboard.general.string = entry.message
             } label: { Label("Copier le message seul", systemImage: "text.quote") }
+            if entry.request != nil {
+                Button {
+                    onReplay()
+                } label: { Label("Rejouer la requête", systemImage: "arrow.clockwise.circle") }
+            }
         }
     }
 }
@@ -111,6 +164,7 @@ private extension LogKind {
         case .fetch: return "network"
         case .error: return "exclamationmark.triangle"
         case .info: return "info.circle"
+        case .blocked: return "hand.raised.fill"
         }
     }
     var color: Color {
@@ -119,6 +173,94 @@ private extension LogKind {
         case .fetch: return .blue
         case .error: return .red
         case .info: return .green
+        case .blocked: return .orange
         }
+    }
+}
+
+/// Rejoue une requête `fetchv2` capturée et affiche la réponse brute.
+struct RequestReplayView: View {
+    let request: LoggedRequest
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var isLoading = false
+    @State private var status: Int?
+    @State private var responseHeaders: [String: String] = [:]
+    @State private var body = ""
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Requête") {
+                    LabeledContent("Méthode", value: request.method)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("URL").font(.caption).foregroundStyle(.secondary)
+                        Text(request.url).font(.system(.caption2, design: .monospaced)).textSelection(.enabled)
+                    }
+                    if !request.headers.isEmpty {
+                        DisclosureGroup("En-têtes (\(request.headers.count))") {
+                            ForEach(request.headers.sorted(by: { $0.key < $1.key }), id: \.key) { k, v in
+                                Text("\(k): \(v)").font(.system(.caption2, design: .monospaced))
+                            }
+                        }
+                    }
+                }
+
+                if let status {
+                    Section("Réponse") {
+                        HStack {
+                            Text("Statut")
+                            Spacer()
+                            Text("\(status)")
+                                .foregroundStyle((200...299).contains(status) ? .green : .red)
+                        }
+                        Text("\(body.count) caractères").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Section("Corps") {
+                        ScrollView(.horizontal) {
+                            Text(body.isEmpty ? "(vide)" : body)
+                                .font(.system(.caption2, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+
+                if let errorMessage {
+                    Section { ErrorBanner(message: errorMessage).listRowInsets(EdgeInsets()) }
+                }
+            }
+            .navigationTitle("Rejouer")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { Button("Fermer") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        UIPasteboard.general.string = body
+                    } label: { Image(systemName: "doc.on.doc") }
+                        .disabled(body.isEmpty)
+                }
+            }
+            .overlay { if isLoading { ProgressView().controlSize(.large) } }
+            .task { await replay() }
+        }
+    }
+
+    private func replay() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            guard let url = URL(string: request.url) else { throw URLError(.badURL) }
+            let resp = try await NetworkFetch.perform(
+                url: url, headers: request.headers, method: request.method,
+                body: request.body, followRedirects: true
+            )
+            status = resp.status
+            responseHeaders = resp.headers
+            body = String(data: resp.body, encoding: .utf8) ?? String(decoding: resp.body, as: UTF8.self)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
     }
 }

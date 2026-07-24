@@ -6,6 +6,15 @@ enum LogKind: String {
     case fetch
     case error
     case info
+    case blocked
+}
+
+/// Requête `fetchv2` rejouable (attachée aux logs réseau).
+struct LoggedRequest: Hashable {
+    let method: String
+    let url: String
+    let headers: [String: String]
+    let body: String?
 }
 
 struct LogEntry: Identifiable, Hashable {
@@ -16,6 +25,8 @@ struct LogEntry: Identifiable, Hashable {
     let message: String
     /// Détail optionnel (corps de requête, statut, durée…).
     let detail: String?
+    /// Requête rejouable (logs réseau uniquement).
+    let request: LoggedRequest?
 
     var timeString: String {
         let f = DateFormatter()
@@ -40,8 +51,10 @@ final class DebugLog: ObservableObject {
     private var pending: [LogEntry] = []
     private var flushScheduled = false
 
-    func append(_ kind: LogKind, _ message: String, module: String? = nil, detail: String? = nil) {
-        let entry = LogEntry(date: Date(), kind: kind, module: module, message: message, detail: detail)
+    func append(_ kind: LogKind, _ message: String, module: String? = nil,
+                detail: String? = nil, request: LoggedRequest? = nil) {
+        let entry = LogEntry(date: Date(), kind: kind, module: module,
+                             message: message, detail: detail, request: request)
         if Thread.isMainThread {
             enqueue(entry)
         } else {

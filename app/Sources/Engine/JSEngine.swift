@@ -217,8 +217,10 @@ final class JSEngine {
         let engineQueue = queue
         let disposeFlag = self.disposeFlag
 
-        func logFetch(_ kind: LogKind, _ msg: String, _ detail: String? = nil) {
-            DispatchQueue.main.async { debugLog?.append(kind, msg, module: moduleName, detail: detail) }
+        func logFetch(_ kind: LogKind, _ msg: String, _ detail: String? = nil, request: LoggedRequest? = nil) {
+            DispatchQueue.main.async {
+                debugLog?.append(kind, msg, module: moduleName, detail: detail, request: request)
+            }
         }
 
         let fetchBlock: @convention(block) (String, JSValue?, JSValue?, JSValue?, JSValue?, JSValue?) -> JSValue? = {
@@ -241,12 +243,13 @@ final class JSEngine {
             let followRedirects = redirectVal.map { !$0.isBoolean || $0.toBool() } ?? true
 
             let started = Date()
-            logFetch(.fetch, "\(method) \(urlStr)")
+            let loggedRequest = LoggedRequest(method: method, url: urlStr, headers: headers, body: body)
+            logFetch(.fetch, "\(method) \(urlStr)", request: loggedRequest)
 
-            // Blocage optionnel des trackers (webhooks Discord).
+            // Blocage optionnel des trackers (webhooks Discord, Supabase…).
             if settings.blockWebhooks,
                settings.blockedURLPatterns.contains(where: { urlStr.contains($0) }) {
-                logFetch(.info, "bloqué (webhook) : \(urlStr)")
+                logFetch(.blocked, "bloqué : \(urlStr)", request: loggedRequest)
                 let obj = JSValue(newObjectIn: context)!
                 obj.setValue(204, forProperty: "status")
                 obj.setValue([String: String](), forProperty: "headers")
