@@ -39,7 +39,13 @@ jobs:
       - name: Variables de release
         id: vars
         run: |
-          echo "version=1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
+          # Version sémantique "à retenue" : le patch va de 0 à 9 puis passe au
+          # minor (ex. run 9 → 1.0.9, run 10 → 1.1.0, run 100 → 2.0.0).
+          N=${{ github.run_number }}
+          MAJOR=$((1 + N / 100))
+          MINOR=$(((N / 10) % 10))
+          PATCH=$((N % 10))
+          echo "version=$MAJOR.$MINOR.$PATCH" >> $GITHUB_OUTPUT
           echo "tag=app-nightly-${{ github.run_number }}" >> $GITHUB_OUTPUT
           echo "date=$(date -u +%Y-%m-%d)" >> $GITHUB_OUTPUT
 

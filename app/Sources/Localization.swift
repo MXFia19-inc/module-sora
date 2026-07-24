@@ -80,7 +80,7 @@ let frenchStrings: [String: String] = [
     // Test (mass tester)
     "Mass test": "Test en masse",
     "Keywords by type": "Mots-clés par type",
-    "Anime": "Anime", "Movie": "Film", "Series": "Série", "Manga": "Manga",
+    "Anime": "Anime", "Movie": "Film", "Show": "Série", "Manga": "Manga",
     "keyword": "mot-clé",
     "Auto": "Auto",
     "Set all": "Tout définir",
