@@ -12,6 +12,8 @@ struct MassTestView: View {
     @State private var selected: Set<String> = []
     /// Catégorie choisie manuellement par id de module (absent = Auto).
     @State private var overrides: [String: TestCategory] = [:]
+    /// Mot-clé libre par id de module (prioritaire sur celui de la catégorie).
+    @State private var customKeywords: [String: String] = [:]
     @State private var sharePayload: SharePayload?
 
     var body: some View {
@@ -40,9 +42,18 @@ struct MassTestView: View {
             LabeledField(label: L("Movie"), text: $settings.kwFilm)
             LabeledField(label: L("Show"), text: $settings.kwSerie)
             LabeledField(label: L("Manga"), text: $settings.kwManga)
+            LabeledField(label: L("Custom"), text: $settings.kwCustom)
             Stepper("\(L("Tested episode (series)")): \(settings.serieEpisode)",
                     value: $settings.serieEpisode, in: 1...500)
         }
+    }
+
+    /// Mot-clé personnalisé d'un module (vide = mot-clé de sa catégorie).
+    private func customKeywordBinding(_ id: String) -> Binding<String> {
+        Binding(
+            get: { customKeywords[id] ?? "" },
+            set: { customKeywords[id] = $0 }
+        )
     }
 
     private func effectiveCategory(_ module: LoadedModule) -> TestCategory {
@@ -56,6 +67,7 @@ struct MassTestView: View {
             }
             ForEach(store.modules) { module in
                 let cats = TestCategory.categories(from: module.manifest.type)
+                VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Button {
                         toggle(module.id)
@@ -72,22 +84,36 @@ struct MassTestView: View {
                     }
                     .buttonStyle(.borderless)
                     Spacer()
-                    if cats.count > 1 {
-                        Menu {
-                            Button("\(L("Auto")) (\(L(TestCategory.from(type: module.manifest.type).label)))") {
-                                overrides[module.id] = nil
-                            }
-                            ForEach(cats) { c in
-                                Button(c.label) { overrides[module.id] = c }
-                            }
-                        } label: {
-                            HStack(spacing: 2) {
-                                Text(overrides[module.id]?.label ?? "Auto")
-                                Image(systemName: "chevron.up.chevron.down")
-                            }
-                            .font(.caption)
+                    Menu {
+                        Button("\(L("Auto")) (\(L(TestCategory.from(type: module.manifest.type).label)))") {
+                            overrides[module.id] = nil
                         }
+                        ForEach(TestCategory.detectable) { c in
+                            Button(L(c.label)) { overrides[module.id] = c }
+                        }
+                        Divider()
+                        Button(L("Custom")) { overrides[module.id] = .custom }
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text(overrides[module.id].map { L($0.label) } ?? L("Auto"))
+                            Image(systemName: "chevron.up.chevron.down")
+                        }
+                        .font(.caption)
                     }
+                }
+
+                // Mot-clé libre : affiché pour « Custom », sinon en surcharge optionnelle.
+                if effectiveCategory(module) == .custom {
+                    HStack(spacing: 6) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.caption2).foregroundStyle(.secondary)
+                        TextField(L("Custom keyword"), text: customKeywordBinding(module.id))
+                            .font(.caption)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    .padding(.leading, 28)
+                }
                 }
             }
         } header: {
@@ -129,7 +155,11 @@ struct MassTestView: View {
         Section {
             Button {
                 let modules = store.modules.filter { selected.contains($0.id) }
-                Task { await tester.run(modules: modules, overrides: overrides, debugLog: debugLog, settings: settings) }
+                Task {
+                    await tester.run(modules: modules, overrides: overrides,
+                                     customKeywords: customKeywords,
+                                     debugLog: debugLog, settings: settings)
+                }
             } label: {
                 HStack {
                     if tester.isRunning {
@@ -253,12 +283,24 @@ private struct ReportDetailView: View {
     @EnvironmentObject private var debugLog: DebugLog
     @EnvironmentObject private var settings: AppSettings
     @State private var jsonSheet: RawJSONPayload?
+    /// Mot-clé éditable pour relancer le module avec une autre recherche.
+    @State private var editedKeyword = ""
 
     private var report: ModuleTestReport? { tester.reports.first { $0.id == reportId } }
 
     private func logs(_ report: ModuleTestReport) -> [LogEntry] {
         let start = report.startedAt ?? .distantPast
         return debugLog.entries.filter { $0.module == report.module.name && $0.date >= start }
+    }
+
+    /// Relance le module avec le mot-clé saisi (ou l'actuel s'il est vide).
+    private func relaunch() {
+        let keyword = editedKeyword.trimmingCharacters(in: .whitespaces)
+        Task {
+            await tester.runSingle(reportId: reportId,
+                                   keyword: keyword.isEmpty ? nil : keyword,
+                                   debugLog: debugLog, settings: settings)
+        }
     }
 
     /// Si le Chargement a échoué avec une erreur de syntaxe localisée (« ligne N »),
@@ -294,7 +336,21 @@ private struct ReportDetailView: View {
         List {
             Section {
                 LabeledContent(L("Type"), value: L(report.category.label))
-                LabeledContent(L("Keyword"), value: report.keyword)
+                HStack {
+                    Text(L("Keyword"))
+                    Spacer()
+                    TextField(L("Keyword"), text: $editedKeyword)
+                        .multilineTextAlignment(.trailing)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onSubmit { relaunch() }
+                }
+                Button {
+                    relaunch()
+                } label: {
+                    Label(L("Relaunch with this keyword"), systemImage: "arrow.clockwise")
+                }
+                .disabled(tester.isRunning || editedKeyword.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
             Section(L("Steps")) {
@@ -381,15 +437,19 @@ private struct ReportDetailView: View {
         }
         .navigationTitle(report.module.name)
         .navigationBarTitleDisplayMode(.inline)
+        .keyboardDoneToolbar()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    Task { await tester.runSingle(reportId: reportId, debugLog: debugLog, settings: settings) }
+                    relaunch()
                 } label: {
                     Label(L("Relaunch"), systemImage: "arrow.clockwise")
                 }
                 .disabled(tester.isRunning)
             }
+        }
+        .onAppear {
+            if editedKeyword.isEmpty { editedKeyword = report.keyword }
         }
     }
 }

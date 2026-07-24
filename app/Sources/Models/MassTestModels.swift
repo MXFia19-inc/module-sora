@@ -3,7 +3,12 @@ import SwiftUI
 /// Catégorie de test déduite du champ `type` d'un module.
 enum TestCategory: String, CaseIterable, Identifiable {
     case anime, film, serie, manga
+    /// Mot-clé libre défini par l'utilisateur (par module).
+    case custom
     var id: String { rawValue }
+
+    /// Catégories déductibles d'un manifest (exclut `custom`).
+    static var detectable: [TestCategory] { [.anime, .film, .serie, .manga] }
 
     /// Libellé anglais (clé de traduction).
     var label: String {
@@ -12,6 +17,7 @@ enum TestCategory: String, CaseIterable, Identifiable {
         case .film: return "Movie"
         case .serie: return "Show"
         case .manga: return "Manga"
+        case .custom: return "Custom"
         }
     }
 

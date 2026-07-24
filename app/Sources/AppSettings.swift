@@ -26,12 +26,16 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(language.rawValue, forKey: Keys.language); Loc.current = language }
     }
 
+    /// Mot-clé libre par défaut pour la catégorie « Custom ».
+    @Published var kwCustom: String { didSet { defaults.set(kwCustom, forKey: Keys.kwCustom) } }
+
     func keyword(for category: TestCategory) -> String {
         switch category {
         case .anime: return kwAnime
         case .film: return kwFilm
         case .serie: return kwSerie
         case .manga: return kwManga
+        case .custom: return kwCustom
         }
     }
 
@@ -57,6 +61,7 @@ final class AppSettings: ObservableObject {
         static let kwFilm = "kwFilm"
         static let kwSerie = "kwSerie"
         static let kwManga = "kwManga"
+        static let kwCustom = "kwCustom"
         static let serieEp = "serieEpisode"
         static let language = "appLanguage"
         static let supabaseMigration = "migratedSupabase"
@@ -94,6 +99,7 @@ final class AppSettings: ObservableObject {
         kwFilm = d.string(forKey: Keys.kwFilm) ?? "interstellar"
         kwSerie = d.string(forKey: Keys.kwSerie) ?? "breaking bad"
         kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
+        kwCustom = d.string(forKey: Keys.kwCustom) ?? ""
         serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1
         let lang = AppLanguage(rawValue: d.string(forKey: Keys.language) ?? "en") ?? .en
         language = lang

@@ -10,13 +10,16 @@ final class MassTester: ObservableObject {
     @Published private(set) var currentIndex: Int?
 
     /// `overrides` : catégorie choisie manuellement par id de module (sinon Auto).
+    /// `customKeywords` : mot-clé libre par id de module (prioritaire s'il est non vide).
     func run(modules: [LoadedModule], overrides: [String: TestCategory],
+             customKeywords: [String: String] = [:],
              debugLog: DebugLog, settings: AppSettings) async {
         guard !isRunning else { return }
         reports = modules.map { module in
             let category = overrides[module.id] ?? TestCategory.from(type: module.manifest.type)
-            return ModuleTestReport(module: module, category: category,
-                                    keyword: settings.keyword(for: category))
+            let custom = customKeywords[module.id]?.trimmingCharacters(in: .whitespaces) ?? ""
+            let keyword = custom.isEmpty ? settings.keyword(for: category) : custom
+            return ModuleTestReport(module: module, category: category, keyword: keyword)
         }
         isRunning = true
         for index in reports.indices {
@@ -28,11 +31,14 @@ final class MassTester: ObservableObject {
     }
 
     /// Relance un seul module (réinitialise ses étapes) sans toucher aux autres.
-    func runSingle(reportId: String, debugLog: DebugLog, settings: AppSettings) async {
+    /// `keyword` permet de relancer avec un mot-clé différent.
+    func runSingle(reportId: String, keyword: String? = nil,
+                   debugLog: DebugLog, settings: AppSettings) async {
         guard !isRunning, let index = reports.firstIndex(where: { $0.id == reportId }) else { return }
         isRunning = true
         let old = reports[index]
-        reports[index] = ModuleTestReport(module: old.module, category: old.category, keyword: old.keyword)
+        let newKeyword = (keyword?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? old.keyword
+        reports[index] = ModuleTestReport(module: old.module, category: old.category, keyword: newKeyword)
         currentIndex = index
         await runOne(index: index, debugLog: debugLog, settings: settings)
         currentIndex = nil
