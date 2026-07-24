@@ -13,6 +13,9 @@ struct PasteModuleView: View {
     @State private var script = ""
     @State private var overwriteTarget: LoadedModule?
     @State private var moduleToTest: LoadedModule?
+    @State private var jumpLine: Int?
+    @State private var syntaxIssue: SyntaxCheck.Issue?
+    @State private var syntaxChecked = false
 
     private var scriptEmpty: Bool {
         script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -51,11 +54,10 @@ struct PasteModuleView: View {
                 }
 
                 Section {
-                    TextEditor(text: $script)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(minHeight: 220)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
+                    CodeEditorView(text: $script, jumpLine: $jumpLine)
+                        .frame(height: 320)
+                        .listRowInsets(EdgeInsets())
+                        .onChange(of: script) { _ in syntaxChecked = false; syntaxIssue = nil }
                 } header: {
                     HStack {
                         Text("Code JS")
@@ -69,6 +71,38 @@ struct PasteModuleView: View {
                         } label: { Label("Effacer", systemImage: "xmark.circle") }
                             .textCase(nil)
                             .disabled(scriptEmpty)
+                    }
+                }
+
+                Section {
+                    Button {
+                        syntaxIssue = SyntaxCheck.validate(script)
+                        syntaxChecked = true
+                    } label: {
+                        Label("Vérifier la syntaxe", systemImage: "checkmark.seal")
+                    }
+                    .disabled(scriptEmpty)
+
+                    if let issue = syntaxIssue {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(issue.message, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                            if let line = issue.line {
+                                Button {
+                                    jumpLine = line
+                                } label: {
+                                    Label("Aller à la ligne \(line)\(issue.column.map { ", col \($0)" } ?? "")",
+                                          systemImage: "arrow.down.to.line")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+                    } else if syntaxChecked {
+                        Label("Syntaxe OK", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.green)
                     }
                 }
 
