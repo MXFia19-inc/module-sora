@@ -82,6 +82,15 @@ private struct LogRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = entry.plain
+            } label: { Label("Copier ce log", systemImage: "doc.on.doc") }
+            Button {
+                UIPasteboard.general.string = entry.message
+            } label: { Label("Copier le message seul", systemImage: "text.quote") }
+        }
     }
 }
 

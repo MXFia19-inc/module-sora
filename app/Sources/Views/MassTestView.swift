@@ -214,6 +214,19 @@ private struct ReportDetailView: View {
         return debugLog.entries.filter { $0.module == report.module.name && $0.date >= start }
     }
 
+    /// Si le Chargement a échoué avec une erreur de syntaxe localisée (« ligne N »),
+    /// extrait les lignes de code autour du point fautif.
+    private var syntaxSnippet: (fault: Int, lines: [(Int, String)])? {
+        guard let load = report.steps.first(where: { $0.name == "Chargement" }),
+              load.status == .failure, let detail = load.detail,
+              let range = detail.range(of: #"ligne (\d+)"#, options: .regularExpression),
+              let faultLine = Int(detail[range].filter(\.isNumber)) else { return nil }
+        let all = report.module.scriptContent.components(separatedBy: "\n")
+        guard faultLine >= 1, faultLine <= all.count else { return nil }
+        let start = max(1, faultLine - 3), end = min(all.count, faultLine + 3)
+        return (faultLine, (start...end).map { ($0, all[$0 - 1]) })
+    }
+
     var body: some View {
         List {
             Section {
@@ -252,6 +265,31 @@ private struct ReportDetailView: View {
                 }
             }
 
+            if let snippet = syntaxSnippet {
+                Section("Code autour de l'erreur (ligne \(snippet.fault))") {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(snippet.lines, id: \.0) { lineNo, text in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("\(lineNo)")
+                                    .frame(width: 34, alignment: .trailing)
+                                    .foregroundStyle(.secondary)
+                                Text(text.isEmpty ? " " : text)
+                                    .foregroundStyle(lineNo == snippet.fault ? .red : .primary)
+                                    .fontWeight(lineNo == snippet.fault ? .bold : .regular)
+                            }
+                            .font(.system(.caption2, design: .monospaced))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = snippet.lines
+                                .map { "\($0.0): \($0.1)" }.joined(separator: "\n")
+                        } label: { Label("Copier l'extrait", systemImage: "doc.on.doc") }
+                    }
+                }
+            }
+
             Section("Logs du module (\(logs.count))") {
                 if logs.isEmpty {
                     Text("Aucun log capturé.").foregroundStyle(.secondary)
@@ -267,7 +305,13 @@ private struct ReportDetailView: View {
                         Text(entry.message)
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundStyle(entry.kind == .error ? .red : .primary)
-                            .textSelection(.enabled)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = entry.message
+                        } label: { Label("Copier ce log", systemImage: "doc.on.doc") }
                     }
                 }
             }
