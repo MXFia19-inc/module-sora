@@ -25,8 +25,8 @@ struct PasteModuleView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Cible", selection: $overwriteTarget) {
-                        Text("Nouveau module local").tag(LoadedModule?.none)
+                    Picker(L("Target"), selection: $overwriteTarget) {
+                        Text(L("New local module")).tag(LoadedModule?.none)
                         ForEach(store.modules) { module in
                             Text(module.name).tag(LoadedModule?.some(module))
                         }
@@ -35,21 +35,21 @@ struct PasteModuleView: View {
                         Button {
                             script = target.scriptContent
                         } label: {
-                            Label("Charger le code actuel du module", systemImage: "arrow.down.doc")
+                            Label(L("Load the module's current code"), systemImage: "arrow.down.doc")
                         }
                     }
                 } footer: {
                     Text(overwriteTarget == nil
-                         ? "Crée un module local à partir du code collé."
-                         : "Remplace le script du module sélectionné (conserve son manifest). Le code actuel est chargé dans l'éditeur pour que tu puisses le modifier.")
+                         ? L("Creates a local module from the pasted code.")
+                         : L("Replaces the selected module's script (keeps its manifest). The current code is loaded into the editor so you can edit it."))
                 }
 
                 if overwriteTarget == nil {
-                    Section("Métadonnées") {
-                        TextField("Nom", text: $name)
-                        TextField("Type (anime, shows/movies, manga…)", text: $type)
+                    Section(L("Metadata")) {
+                        TextField(L("Name"), text: $name)
+                        TextField(L("Type (anime, shows/movies, manga…)"), text: $type)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
-                        TextField("Langue (optionnel)", text: $language)
+                        TextField(L("Language (optional)"), text: $language)
                     }
                 }
 
@@ -60,15 +60,15 @@ struct PasteModuleView: View {
                         .onChange(of: script) { _ in syntaxChecked = false; syntaxIssue = nil }
                 } header: {
                     HStack {
-                        Text("Code JS")
+                        Text(L("JS Code"))
                         Spacer()
                         Button {
                             if let s = UIPasteboard.general.string { script = s }
-                        } label: { Label("Coller", systemImage: "doc.on.clipboard") }
+                        } label: { Label(L("Paste"), systemImage: "doc.on.clipboard") }
                             .textCase(nil)
                         Button(role: .destructive) {
                             script = ""
-                        } label: { Label("Effacer", systemImage: "xmark.circle") }
+                        } label: { Label(L("Clear"), systemImage: "xmark.circle") }
                             .textCase(nil)
                             .disabled(scriptEmpty)
                     }
@@ -79,7 +79,7 @@ struct PasteModuleView: View {
                         syntaxIssue = SyntaxCheck.validate(script)
                         syntaxChecked = true
                     } label: {
-                        Label("Vérifier la syntaxe", systemImage: "checkmark.seal")
+                        Label(L("Check syntax"), systemImage: "checkmark.seal")
                     }
                     .disabled(scriptEmpty)
 
@@ -92,7 +92,7 @@ struct PasteModuleView: View {
                                 Button {
                                     jumpLine = line
                                 } label: {
-                                    Label("Aller à la ligne \(line)\(issue.column.map { ", col \($0)" } ?? "")",
+                                    Label("\(L("Go to line")) \(line)\(issue.column.map { ", \(L("col")) \($0)" } ?? "")",
                                           systemImage: "arrow.down.to.line")
                                 }
                                 .buttonStyle(.bordered)
@@ -100,7 +100,7 @@ struct PasteModuleView: View {
                             }
                         }
                     } else if syntaxChecked {
-                        Label("Syntaxe OK", systemImage: "checkmark.circle.fill")
+                        Label(L("Syntax OK"), systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .foregroundStyle(.green)
                     }
@@ -110,14 +110,14 @@ struct PasteModuleView: View {
                     Button {
                         if let module = save() { moduleToTest = module }
                     } label: {
-                        Label("Enregistrer & tester", systemImage: "play.circle.fill")
+                        Label(L("Save & test"), systemImage: "play.circle.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(scriptEmpty)
                 }
             }
-            .navigationTitle("Coller un module")
+            .navigationTitle(L("Paste a module"))
             .navigationBarTitleDisplayMode(.inline)
             .keyboardDoneToolbar()
             .onChange(of: overwriteTarget) { newValue in
@@ -127,9 +127,9 @@ struct PasteModuleView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Annuler") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) { Button(L("Cancel")) { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Enregistrer") { _ = save(); dismiss() }
+                    Button(L("Save")) { _ = save(); dismiss() }
                         .disabled(scriptEmpty)
                 }
             }
@@ -138,7 +138,7 @@ struct PasteModuleView: View {
                     ModuleTestView(module: module)
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
-                                Button("Fermer") { moduleToTest = nil }
+                                Button(L("Close")) { moduleToTest = nil }
                             }
                         }
                 }

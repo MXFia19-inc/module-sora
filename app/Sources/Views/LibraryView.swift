@@ -40,16 +40,16 @@ struct LibraryView: View {
                         Button(lib.name) { libraryURL = lib.url; Task { await load() } }
                     }
                     HStack {
-                        TextField("URL d'un index .json", text: $libraryURL)
+                        TextField(L("Index .json URL"), text: $libraryURL)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .font(.system(.caption, design: .monospaced))
-                        Button("Charger") { Task { await load() } }
+                        Button(L("Load")) { Task { await load() } }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
                     }
                 } header: {
-                    Text("Bibliothèque")
+                    Text(L("Library"))
                 }
 
                 if let errorMessage {
@@ -72,14 +72,14 @@ struct LibraryView: View {
                             Spacer()
                             if !languages.isEmpty {
                                 Menu {
-                                    Button("Toutes les langues") { languageFilter = nil }
+                                    Button(L("All languages")) { languageFilter = nil }
                                     ForEach(languages, id: \.self) { lang in
                                         Button(lang) { languageFilter = lang }
                                     }
                                 } label: {
                                     HStack(spacing: 2) {
                                         Image(systemName: "globe")
-                                        Text(languageFilter ?? "Langue")
+                                        Text(languageFilter ?? L("Language filter"))
                                     }
                                     .font(.caption)
                                     .textCase(nil)
@@ -89,13 +89,13 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle("Bibliothèques")
+            .navigationTitle(L("Libraries"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Rechercher (nom, auteur, type…)")
+                        prompt: L("Search (name, author, type…)"))
             .keyboardDoneToolbar()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Fermer") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(L("Close")) { dismiss() } }
             }
             .overlay {
                 if isLoading { ProgressView().controlSize(.large) }
@@ -117,7 +117,7 @@ struct LibraryView: View {
         do {
             let data = try await store.data(from: libraryURL)
             entries = try ModuleLibrary.parse(data)
-            if entries.isEmpty { errorMessage = "Index chargé mais aucun module reconnu." }
+            if entries.isEmpty { errorMessage = L("Index loaded but no module recognized.") }
         } catch {
             errorMessage = error.localizedDescription
             entries = []
@@ -155,7 +155,7 @@ private struct LibraryRow: View {
                 HStack(spacing: 6) {
                     if let l = entry.language { Text(l) }
                     if let t = entry.type { Text("· \(t)") }
-                    if let n = entry.installCount { Text("· \(n) inst.") }
+                    if let a = entry.author { Text("· \(a)") }
                 }
                 .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
@@ -165,7 +165,7 @@ private struct LibraryRow: View {
             } else if installed {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
             } else {
-                Button("Ajouter", action: add)
+                Button(L("Add"), action: add)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }

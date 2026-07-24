@@ -35,7 +35,7 @@ struct DetailView: View {
             }
 
             if let detail, detail.description != "N/A" {
-                Section("Synopsis") {
+                Section(L("Synopsis")) {
                     Text(detail.description).font(.callout)
                 }
             }
@@ -44,7 +44,7 @@ struct DetailView: View {
                 Section { ErrorBanner(message: errorMessage).listRowInsets(EdgeInsets()) }
             }
 
-            Section("Épisodes (\(episodes.count))") {
+            Section("\(L("Episodes")) (\(episodes.count))") {
                 ForEach(episodes) { ep in
                     NavigationLink {
                         StreamPickerView(runner: runner, episode: ep)
@@ -54,18 +54,18 @@ struct DetailView: View {
                 }
             }
         }
-        .navigationTitle("Détails")
+        .navigationTitle(L("Details"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button {
                         jsonSheet = RawJSONPayload(title: "extractDetails", raw: detailRaw)
-                    } label: { Label("JSON : extractDetails", systemImage: "curlybraces") }
+                    } label: { Label("JSON: extractDetails", systemImage: "curlybraces") }
                         .disabled(detailRaw.isEmpty)
                     Button {
                         jsonSheet = RawJSONPayload(title: "extractEpisodes", raw: episodesRaw)
-                    } label: { Label("JSON : extractEpisodes", systemImage: "curlybraces") }
+                    } label: { Label("JSON: extractEpisodes", systemImage: "curlybraces") }
                         .disabled(episodesRaw.isEmpty)
                 } label: {
                     Image(systemName: "curlybraces")

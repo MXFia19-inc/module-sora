@@ -31,7 +31,7 @@ final class TestSession: ObservableObject {
     }
 
     func search() async {
-        guard let runner else { errorMessage = initError ?? "Module non chargé."; return }
+        guard let runner else { errorMessage = initError ?? L("Module not loaded."); return }
         let keyword = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !keyword.isEmpty else { return }
         isLoading = true
@@ -40,7 +40,7 @@ final class TestSession: ObservableObject {
             let r = try await runner.search(keyword)
             results = r.value
             lastRaw = r.raw
-            if results.isEmpty { errorMessage = "Aucun résultat (le module a répondu, mais vide)." }
+            if results.isEmpty { errorMessage = L("No result (the module responded, but empty).") }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -87,7 +87,7 @@ struct ModuleTestView: View {
         .searchable(
             text: $session.query,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Rechercher dans \(module.name)"
+            prompt: "\(L("Search in")) \(module.name)"
         )
         .keyboardDoneToolbar()
         .onSubmit(of: .search) { Task { await session.search() } }

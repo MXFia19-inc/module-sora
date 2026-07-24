@@ -35,11 +35,11 @@ struct LogsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Filtre", selection: $filter) {
-                Text("Tout").tag(LogKind?.none)
-                Text("Console").tag(LogKind?.some(.console))
-                Text("Réseau").tag(LogKind?.some(.fetch))
-                Text("Erreurs").tag(LogKind?.some(.error))
+            Picker(L("Filter"), selection: $filter) {
+                Text(L("All")).tag(LogKind?.none)
+                Text(L("Console")).tag(LogKind?.some(.console))
+                Text(L("Network")).tag(LogKind?.some(.fetch))
+                Text(L("Errors")).tag(LogKind?.some(.error))
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -47,7 +47,7 @@ struct LogsView: View {
 
             if entries.isEmpty {
                 Spacer()
-                Text("Aucun log.").foregroundStyle(.secondary)
+                Text(L("No log.")).foregroundStyle(.secondary)
                 Spacer()
             } else {
                 ScrollViewReader { proxy in
@@ -68,10 +68,10 @@ struct LogsView: View {
                 }
             }
         }
-        .navigationTitle("Logs")
+        .navigationTitle(L("Logs"))
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Filtrer (texte, URL, code HTTP…)")
+                    prompt: L("Filter (text, URL, HTTP code…)"))
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button(role: .destructive) { debugLog.clear() } label: {
@@ -80,13 +80,13 @@ struct LogsView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Picker("Module", selection: $moduleFilter) {
-                        Text("Tous les modules").tag(String?.none)
+                    Picker(L("Module"), selection: $moduleFilter) {
+                        Text(L("All modules")).tag(String?.none)
                         ForEach(modules, id: \.self) { m in Text(m).tag(String?.some(m)) }
                     }
                     Button {
                         UIPasteboard.general.string = entries.map(\.plain).joined(separator: "\n")
-                    } label: { Label("Copier tout (filtré)", systemImage: "doc.on.doc") }
+                    } label: { Label(L("Copy all (filtered)"), systemImage: "doc.on.doc") }
                 } label: {
                     Image(systemName: moduleFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                 }
@@ -115,7 +115,7 @@ private struct LogRow: View {
                     Text(m).font(.caption2).foregroundStyle(.tertiary)
                 }
                 if entry.kind == .blocked {
-                    Text("BLOQUÉ").font(.system(size: 8, weight: .bold))
+                    Text(L("BLOCKED")).font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 4).padding(.vertical, 1)
                         .background(.orange.opacity(0.15), in: Capsule())
@@ -134,14 +134,14 @@ private struct LogRow: View {
         .contextMenu {
             Button {
                 UIPasteboard.general.string = entry.plain
-            } label: { Label("Copier ce log", systemImage: "doc.on.doc") }
+            } label: { Label(L("Copy this log"), systemImage: "doc.on.doc") }
             Button {
                 UIPasteboard.general.string = entry.message
-            } label: { Label("Copier le message seul", systemImage: "text.quote") }
+            } label: { Label(L("Copy the message only"), systemImage: "text.quote") }
             if entry.request != nil {
                 Button {
                     onReplay()
-                } label: { Label("Rejouer la requête", systemImage: "arrow.clockwise.circle") }
+                } label: { Label(L("Replay the request"), systemImage: "arrow.clockwise.circle") }
             }
         }
     }
@@ -192,14 +192,14 @@ struct RequestReplayView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Requête") {
-                    LabeledContent("Méthode", value: request.method)
+                Section(L("Request")) {
+                    LabeledContent(L("Method"), value: request.method)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("URL").font(.caption).foregroundStyle(.secondary)
                         Text(request.url).font(.system(.caption2, design: .monospaced)).textSelection(.enabled)
                     }
                     if !request.headers.isEmpty {
-                        DisclosureGroup("En-têtes (\(request.headers.count))") {
+                        DisclosureGroup("\(L("Headers")) (\(request.headers.count))") {
                             ForEach(request.headers.sorted(by: { $0.key < $1.key }), id: \.key) { k, v in
                                 Text("\(k): \(v)").font(.system(.caption2, design: .monospaced))
                             }
@@ -208,18 +208,18 @@ struct RequestReplayView: View {
                 }
 
                 if let status {
-                    Section("Réponse") {
+                    Section(L("Response")) {
                         HStack {
-                            Text("Statut")
+                            Text(L("Status"))
                             Spacer()
                             Text("\(status)")
                                 .foregroundStyle((200...299).contains(status) ? .green : .red)
                         }
-                        Text("\(responseBody.count) caractères").font(.caption2).foregroundStyle(.secondary)
+                        Text("\(responseBody.count) \(L("characters"))").font(.caption2).foregroundStyle(.secondary)
                     }
-                    Section("Corps") {
+                    Section(L("Body")) {
                         ScrollView(.horizontal) {
-                            Text(responseBody.isEmpty ? "(vide)" : responseBody)
+                            Text(responseBody.isEmpty ? L("(empty)") : responseBody)
                                 .font(.system(.caption2, design: .monospaced))
                                 .textSelection(.enabled)
                         }
@@ -230,10 +230,10 @@ struct RequestReplayView: View {
                     Section { ErrorBanner(message: errorMessage).listRowInsets(EdgeInsets()) }
                 }
             }
-            .navigationTitle("Rejouer")
+            .navigationTitle(L("Replay"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Fermer") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) { Button(L("Close")) { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         UIPasteboard.general.string = responseBody

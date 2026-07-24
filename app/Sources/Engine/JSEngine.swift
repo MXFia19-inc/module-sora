@@ -10,11 +10,11 @@ enum JSEngineError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .contextUnavailable: return "Contexte JavaScript indisponible."
-        case .scriptException(let m): return "Erreur à l'évaluation du script : \(m)"
-        case .missingFunction(let f): return "Fonction « \(f) » absente du module."
-        case .jsError(let m): return "Erreur JS : \(m)"
-        case .timeout(let f, let s): return "Délai dépassé (\(Int(s))s) pour « \(f) »."
+        case .contextUnavailable: return L("JavaScript context unavailable.")
+        case .scriptException(let m): return Lf("Error while evaluating the script: %@", m)
+        case .missingFunction(let f): return Lf("Function « %@ » missing from the module.", f)
+        case .jsError(let m): return Lf("JS error: %@", m)
+        case .timeout(let f, let s): return Lf("Timeout (%@s) for « %@ ».", "\(Int(s))", f)
         }
     }
 }
@@ -75,7 +75,7 @@ final class JSEngine {
                 var msg = exception?.toString() ?? "exception JS"
                 if let ex = exception,
                    let line = ex.objectForKeyedSubscript("line"), !line.isUndefined {
-                    msg += " (ligne \(line.toInt32())"
+                    msg += " (line \(line.toInt32())"
                     if let col = ex.objectForKeyedSubscript("column"), !col.isUndefined {
                         msg += ", col \(col.toInt32())"
                     }
@@ -109,7 +109,7 @@ final class JSEngine {
                 log(.info, "→ \(fn)(\(args.map { "\($0)" }.joined(separator: ", ")))")
 
                 guard let result = function.call(withArguments: args) else {
-                    continuation.resume(throwing: JSEngineError.jsError("l'appel de \(fn) n'a rien retourné")); return
+                    continuation.resume(throwing: JSEngineError.jsError("call to \(fn) returned nothing")); return
                 }
                 if let ex = context.exception {
                     let msg = ex.toString() ?? "exception"
@@ -137,8 +137,8 @@ final class JSEngine {
                 let onReject: @convention(block) (JSValue?) -> Void = { [weak self] err in
                     guard guardBox.tryResume() else { return }
                     timeoutItem.cancel()
-                    let msg = err?.toString() ?? "promesse rejetée"
-                    self?.log(.error, "\(fn) rejeté : \(msg)")
+                    let msg = err?.toString() ?? "promise rejected"
+                    self?.log(.error, "\(fn) rejected: \(msg)")
                     continuation.resume(throwing: JSEngineError.jsError(msg))
                 }
 
@@ -249,7 +249,7 @@ final class JSEngine {
             // Blocage optionnel des trackers (webhooks Discord, Supabase…).
             if settings.blockWebhooks,
                settings.blockedURLPatterns.contains(where: { urlStr.contains($0) }) {
-                logFetch(.blocked, "bloqué : \(urlStr)", request: loggedRequest)
+                logFetch(.blocked, "blocked: \(urlStr)", request: loggedRequest)
                 let obj = JSValue(newObjectIn: context)!
                 obj.setValue(204, forProperty: "status")
                 obj.setValue([String: String](), forProperty: "headers")
@@ -285,7 +285,7 @@ final class JSEngine {
                             resolve?.call(withArguments: [obj])
                         }
                     } catch {
-                        logFetch(.error, "fetch échoué : \(error.localizedDescription)", urlStr)
+                        logFetch(.error, "fetch failed: \(error.localizedDescription)", urlStr)
                         engineQueue.async {
                             let err = JSValue(object: error.localizedDescription, in: context)
                             reject?.call(withArguments: [err as Any])

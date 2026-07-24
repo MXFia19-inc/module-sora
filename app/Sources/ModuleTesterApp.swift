@@ -15,6 +15,7 @@ struct ModuleTesterApp: App {
                 .environmentObject(settings)
                 .environmentObject(massTester)
                 .preferredColorScheme(.dark)
+                .id(settings.language)
         }
     }
 }

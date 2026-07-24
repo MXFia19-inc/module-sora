@@ -29,7 +29,7 @@ struct EpisodeLink: Identifiable, Hashable {
     var displayTitle: String {
         if let t = title, !t.isEmpty { return t }
         let n = number.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(number)) : String(number)
-        return "Épisode \(n)"
+        return "\(L("Episode")) \(n)"
     }
 }
 

@@ -19,9 +19,9 @@ struct StreamPickerView: View {
             }
 
             if let extraction {
-                Section("Flux (\(extraction.streams.count))") {
+                Section("\(L("Streams")) (\(extraction.streams.count))") {
                     if extraction.streams.isEmpty {
-                        Text("Aucun flux retourné.").foregroundStyle(.secondary)
+                        Text(L("No stream returned.")).foregroundStyle(.secondary)
                     }
                     ForEach(extraction.streams) { stream in
                         StreamRow(stream: stream) { playing = stream }
@@ -29,7 +29,7 @@ struct StreamPickerView: View {
                 }
 
                 if !extraction.subtitles.isEmpty {
-                    Section("Sous-titres (\(extraction.subtitles.count))") {
+                    Section("\(L("Subtitles")) (\(extraction.subtitles.count))") {
                         ForEach(extraction.subtitles) { sub in
                             Label(sub.label, systemImage: "captions.bubble")
                                 .font(.callout)
@@ -69,7 +69,7 @@ struct StreamPickerView: View {
             extraction = r.value
             raw = r.raw
             if r.value.streams.isEmpty {
-                errorMessage = "extractStreamUrl a répondu, mais sans flux jouable."
+                errorMessage = L("extractStreamUrl responded, but with no playable stream.")
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -94,7 +94,7 @@ private struct StreamRow: View {
                             .padding(.horizontal, 6).padding(.vertical, 1)
                             .background(.secondary.opacity(0.2), in: Capsule())
                         if !stream.headers.isEmpty {
-                            Text("\(stream.headers.count) en-têtes")
+                            Text("\(stream.headers.count) \(L("headers"))")
                                 .font(.caption2).foregroundStyle(.secondary)
                         }
                     }

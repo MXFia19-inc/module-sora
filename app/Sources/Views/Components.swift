@@ -62,7 +62,7 @@ struct KeyboardDoneToolbar: ViewModifier {
         content.toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Terminé") {
+                Button(L("Done")) {
                     UIApplication.shared.sendAction(
                         #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
                     )

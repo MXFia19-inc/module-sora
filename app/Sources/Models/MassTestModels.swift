@@ -5,11 +5,12 @@ enum TestCategory: String, CaseIterable, Identifiable {
     case anime, film, serie, manga
     var id: String { rawValue }
 
+    /// Libellé anglais (clé de traduction).
     var label: String {
         switch self {
         case .anime: return "Anime"
         case .film: return "Film"
-        case .serie: return "Série"
+        case .serie: return "Series"
         case .manga: return "Manga"
         }
     }
@@ -77,7 +78,8 @@ struct ModuleTestReport: Identifiable {
 
     var id: String { module.id }
 
-    static let stepNames = ["Chargement", "Recherche", "Détails", "Épisodes", "Flux"]
+    /// Noms d'étapes (identifiants stables en anglais ; traduits à l'affichage).
+    static let stepNames = ["Loading", "Search", "Details", "Episodes", "Streams"]
 
     init(module: LoadedModule, category: TestCategory, keyword: String) {
         self.module = module

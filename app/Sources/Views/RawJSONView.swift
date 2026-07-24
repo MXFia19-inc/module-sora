@@ -30,10 +30,10 @@ struct RawJSONView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Copier") { UIPasteboard.general.string = pretty }
+                    Button(L("Copy")) { UIPasteboard.general.string = pretty }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fermer") { dismiss() }
+                    Button(L("Close")) { dismiss() }
                 }
             }
         }

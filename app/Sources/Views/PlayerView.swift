@@ -23,13 +23,13 @@ struct PlayerView: View {
                             Button {
                                 UIApplication.shared.open(url)
                             } label: {
-                                Label("Ouvrir dans \(player.name)", systemImage: "arrow.up.forward.app")
+                                Label("\(L("Open in")) \(player.name)", systemImage: "arrow.up.forward.app")
                             }
                         }
                     }
                     Button {
                         UIPasteboard.general.string = stream.url
-                    } label: { Label("Copier l'URL du flux", systemImage: "doc.on.doc") }
+                    } label: { Label(L("Copy the stream URL"), systemImage: "doc.on.doc") }
                 } label: {
                     Image(systemName: "square.and.arrow.up.circle.fill")
                         .font(.title)
@@ -50,7 +50,7 @@ struct PlayerView: View {
         }
         .overlay(alignment: .bottom) {
             if !subtitles.isEmpty {
-                Text("\(subtitles.count) piste(s) de sous-titres — non muxées par le lecteur natif ; utilisez l'export.")
+                Text("\(subtitles.count) \(L("subtitle track(s) — not muxed by the native player; use export."))")
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.8))
                     .padding(8)

@@ -1,28 +1,36 @@
 import SwiftUI
 
-/// Réglages : timeout JS, blocage des trackers, User-Agent par défaut.
+/// Settings: interface language, JS timeout, tracker blocking, default User-Agent.
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var store: ModuleStore
 
     var body: some View {
         Form {
-            Section("Exécution des modules") {
+            Section(L("Interface")) {
+                Picker(L("Language"), selection: $settings.language) {
+                    ForEach(AppLanguage.allCases) { lang in
+                        Text(lang.label).tag(lang)
+                    }
+                }
+            }
+
+            Section(L("Module execution")) {
                 VStack(alignment: .leading) {
                     HStack {
-                        Text("Délai maximum")
+                        Text(L("Max delay"))
                         Spacer()
                         Text("\(Int(settings.jsTimeout)) s").foregroundStyle(.secondary)
                     }
                     Slider(value: $settings.jsTimeout, in: 5...120, step: 5)
                 }
-                Toggle("Bloquer les trackers", isOn: $settings.blockWebhooks)
+                Toggle(L("Block trackers"), isOn: $settings.blockWebhooks)
             }
 
             if settings.blockWebhooks {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Motifs d'URL bloqués (un par ligne)")
+                        Text(L("Blocked URL patterns (one per line)"))
                             .font(.caption).foregroundStyle(.secondary)
                         TextEditor(text: $settings.blockedPatternsText)
                             .font(.system(.caption, design: .monospaced))
@@ -31,33 +39,33 @@ struct SettingsView: View {
                             .textInputAutocapitalization(.never)
                     }
                 } footer: {
-                    Text("Toute requête fetchv2 dont l'URL contient un de ces motifs est bloquée (réponse vide). Pour le tracking Supabase, ajoute l'endpoint exact, p. ex. « projet.supabase.co/rest/v1/tracking ». Ne bloque pas tout « supabase.co » si un module y lit aussi ses données.")
+                    Text(L("Any fetchv2 request whose URL contains one of these patterns is blocked (empty response). For Supabase tracking, add the exact endpoint, e.g. « project.supabase.co/rest/v1/tracking ». Don't block all « supabase.co » if a module also reads its data there."))
                 }
             }
 
-            Section("Réseau") {
+            Section(L("Network")) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("User-Agent par défaut").font(.caption).foregroundStyle(.secondary)
+                    Text(L("Default User-Agent")).font(.caption).foregroundStyle(.secondary)
                     TextField("User-Agent", text: $settings.defaultUserAgent, axis: .vertical)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(1...4)
                 }
             }
 
-            Section("Modules installés") {
-                Text("\(store.modules.count) module(s)")
+            Section(L("Installed modules")) {
+                Text("\(store.modules.count)")
                     .foregroundStyle(.secondary)
             }
 
             Section {
-                Link(destination: URL(string: "https://github.com/MXFia19/module-sora")!) {
-                    Label("Dépôt module-sora", systemImage: "chevron.left.forwardslash.chevron.right")
+                Link(destination: URL(string: "https://git.luna-app.eu/MXFia19/sources")!) {
+                    Label(L("Luna source"), systemImage: "chevron.left.forwardslash.chevron.right")
                 }
             } footer: {
-                Text("App de test des modules « Sora ». Aucune fonctionnalité AniList/social.")
+                Text(L("App to test « Sora » modules. No AniList/social features."))
             }
         }
-        .navigationTitle("Réglages")
+        .navigationTitle(L("Settings"))
         .navigationBarTitleDisplayMode(.inline)
         .keyboardDoneToolbar()
     }

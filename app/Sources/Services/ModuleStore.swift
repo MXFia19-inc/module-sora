@@ -22,10 +22,10 @@ enum ModuleStoreError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .badManifestURL: return "URL de manifest invalide."
-        case .badScriptURL: return "URL de script (scriptUrl) invalide dans le manifest."
-        case .network(let m): return "Erreur réseau : \(m)"
-        case .decode(let m): return "Manifest illisible : \(m)"
+        case .badManifestURL: return L("Invalid manifest URL.")
+        case .badScriptURL: return L("Invalid script URL (scriptUrl) in the manifest.")
+        case .network(let m): return Lf("Network error: %@", m)
+        case .decode(let m): return Lf("Unreadable manifest: %@", m)
         }
     }
 }

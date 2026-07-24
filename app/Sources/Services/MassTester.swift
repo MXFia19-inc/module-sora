@@ -51,89 +51,89 @@ final class MassTester: ObservableObject {
 
         // 1. Chargement (évaluation du script).
         do {
-            runnerOpt = try await timed(index, "Chargement") {
+            runnerOpt = try await timed(index, "Loading") {
                 try ModuleRunner(module: self.reports[index].module, debugLog: debugLog, settings: settings)
             }
         } catch {
-            fail(index, "Chargement", error)
-            skipFrom(index, "Recherche")
+            fail(index, "Loading", error)
+            skipFrom(index, "Search")
             return
         }
         guard let runner = runnerOpt else { return }
-        success(index, "Chargement", "module chargé")
+        success(index, "Loading", "module loaded")
 
         // 2. Recherche.
         var firstHref: String?
         do {
-            let result = try await timed(index, "Recherche") { try await runner.search(keyword) }
-            setRaw(index, "Recherche", result.raw)
+            let result = try await timed(index, "Search") { try await runner.search(keyword) }
+            setRaw(index, "Search", result.raw)
             if let first = result.value.first {
                 firstHref = first.href
-                success(index, "Recherche", "\(result.value.count) résultat(s) · « \(first.title) »")
+                success(index, "Search", "\(result.value.count) result(s) · « \(first.title) »")
             } else {
-                fail(index, "Recherche", message: "0 résultat pour « \(keyword) »")
+                fail(index, "Search", message: "0 result for « \(keyword) »")
             }
         } catch {
-            fail(index, "Recherche", error)
+            fail(index, "Search", error)
         }
 
         guard let href = firstHref else {
-            skip(index, "Détails"); skip(index, "Épisodes"); skip(index, "Flux")
+            skip(index, "Details"); skip(index, "Episodes"); skip(index, "Streams")
             return
         }
 
         // 3. Détails.
         do {
-            let result = try await timed(index, "Détails") { try await runner.details(href) }
-            setRaw(index, "Détails", result.raw)
+            let result = try await timed(index, "Details") { try await runner.details(href) }
+            setRaw(index, "Details", result.raw)
             let d = result.value
             let hasContent = d.description != "N/A" || d.aliases != "N/A" || d.airdate != "N/A"
             if hasContent {
-                success(index, "Détails", d.description == "N/A" ? d.aliases : String(d.description.prefix(60)))
+                success(index, "Details", d.description == "N/A" ? d.aliases : String(d.description.prefix(60)))
             } else {
-                fail(index, "Détails", message: "tous les champs à N/A")
+                fail(index, "Details", message: "all fields N/A")
             }
         } catch {
-            fail(index, "Détails", error)
+            fail(index, "Details", error)
         }
 
         // 4. Épisodes.
         var targetEpisode: EpisodeLink?
         let category = reports[index].category
         do {
-            let result = try await timed(index, "Épisodes") { try await runner.episodes(href) }
-            setRaw(index, "Épisodes", result.raw)
+            let result = try await timed(index, "Episodes") { try await runner.episodes(href) }
+            setRaw(index, "Episodes", result.raw)
             if !result.value.isEmpty {
                 targetEpisode = pickEpisode(result.value, category: category,
                                             serieEpisode: settings.serieEpisode)
-                var detail = "\(result.value.count) épisode(s)"
+                var detail = "\(result.value.count) episode(s)"
                 if category == .serie, let ep = targetEpisode {
-                    detail += " · test ép. \(Int(ep.number) == 0 ? settings.serieEpisode : Int(ep.number))"
+                    detail += " · test ep. \(Int(ep.number) == 0 ? settings.serieEpisode : Int(ep.number))"
                 }
-                success(index, "Épisodes", detail)
+                success(index, "Episodes", detail)
             } else {
-                fail(index, "Épisodes", message: "0 épisode")
+                fail(index, "Episodes", message: "0 episode")
             }
         } catch {
-            fail(index, "Épisodes", error)
+            fail(index, "Episodes", error)
         }
 
         guard let episodeHref = targetEpisode?.href else {
-            skip(index, "Flux")
+            skip(index, "Streams")
             return
         }
 
         // 5. Flux.
         do {
-            let result = try await timed(index, "Flux") { try await runner.streams(episodeHref) }
-            setRaw(index, "Flux", result.raw)
+            let result = try await timed(index, "Streams") { try await runner.streams(episodeHref) }
+            setRaw(index, "Streams", result.raw)
             if let first = result.value.streams.first {
-                success(index, "Flux", "\(result.value.streams.count) flux · « \(first.title) »")
+                success(index, "Streams", "\(result.value.streams.count) stream(s) · « \(first.title) »")
             } else {
-                fail(index, "Flux", message: "0 flux jouable")
+                fail(index, "Streams", message: "0 playable stream")
             }
         } catch {
-            fail(index, "Flux", error)
+            fail(index, "Streams", error)
         }
     }
 
@@ -142,10 +142,10 @@ final class MassTester: ObservableObject {
 
     /// Rapport texte exportable (copier / partager).
     func reportText() -> String {
-        var out = "Rapport de test — \(okCount)/\(reports.count) module(s) OK\n"
+        var out = "Test report — \(okCount)/\(reports.count) module(s) OK\n"
         out += "\(Date().formatted())\n\n"
         for r in reports {
-            out += "• \(r.module.name)  [\(r.category.label)] · mot-clé « \(r.keyword) »  → \(symbol(r.overall))\n"
+            out += "• \(r.module.name)  [\(r.category.label)] · keyword « \(r.keyword) »  → \(symbol(r.overall))\n"
             for s in r.steps {
                 out += "    \(symbol(s.status)) \(s.name)"
                 if let ms = s.durationMs { out += " (\(ms) ms)" }
@@ -244,7 +244,7 @@ final class MassTester: ObservableObject {
     }
 
     private func skip(_ index: Int, _ step: String) {
-        update(index, step, .skipped, "ignoré")
+        update(index, step, .skipped, "ignored")
     }
 
     private func skipFrom(_ index: Int, _ step: String) {

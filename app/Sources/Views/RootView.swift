@@ -9,23 +9,23 @@ struct RootView: View {
             NavigationStack {
                 ModulesListView()
             }
-            .tabItem { Label("Modules", systemImage: "puzzlepiece.extension") }
+            .tabItem { Label(L("Modules"), systemImage: "puzzlepiece.extension") }
 
             NavigationStack {
                 MassTestView()
             }
-            .tabItem { Label("Test", systemImage: "checklist") }
+            .tabItem { Label(L("Test"), systemImage: "checklist") }
 
             NavigationStack {
                 LogsView()
             }
-            .tabItem { Label("Logs", systemImage: "terminal") }
+            .tabItem { Label(L("Logs"), systemImage: "terminal") }
             .badge(debugLog.errorCount)
 
             NavigationStack {
                 SettingsView()
             }
-            .tabItem { Label("Réglages", systemImage: "gearshape") }
+            .tabItem { Label(L("Settings"), systemImage: "gearshape") }
         }
     }
 }

@@ -21,6 +21,11 @@ final class AppSettings: ObservableObject {
     /// Numéro d'épisode à tester pour les séries (étape Flux du testeur).
     @Published var serieEpisode: Int { didSet { defaults.set(serieEpisode, forKey: Keys.serieEp) } }
 
+    /// Langue de l'interface (anglais par défaut).
+    @Published var language: AppLanguage {
+        didSet { defaults.set(language.rawValue, forKey: Keys.language); Loc.current = language }
+    }
+
     func keyword(for category: TestCategory) -> String {
         switch category {
         case .anime: return kwAnime
@@ -53,6 +58,7 @@ final class AppSettings: ObservableObject {
         static let kwSerie = "kwSerie"
         static let kwManga = "kwManga"
         static let serieEp = "serieEpisode"
+        static let language = "appLanguage"
     }
 
     private static let defaultUA =
@@ -78,5 +84,8 @@ final class AppSettings: ObservableObject {
         kwSerie = d.string(forKey: Keys.kwSerie) ?? "breaking bad"
         kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
         serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1
+        let lang = AppLanguage(rawValue: d.string(forKey: Keys.language) ?? "en") ?? .en
+        language = lang
+        Loc.current = lang
     }
 }

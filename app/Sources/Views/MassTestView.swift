@@ -21,7 +21,7 @@ struct MassTestView: View {
             runSection
             if !tester.reports.isEmpty { resultsSection }
         }
-        .navigationTitle("Test en masse")
+        .navigationTitle(L("Mass test"))
         .navigationBarTitleDisplayMode(.inline)
         .keyboardDoneToolbar()
         .sheet(item: $sharePayload) { payload in
@@ -35,12 +35,12 @@ struct MassTestView: View {
     // MARK: - Sections
 
     private var keywordsSection: some View {
-        Section("Mots-clés par type") {
-            LabeledField(label: "Anime", text: $settings.kwAnime)
-            LabeledField(label: "Film", text: $settings.kwFilm)
-            LabeledField(label: "Série", text: $settings.kwSerie)
-            LabeledField(label: "Manga", text: $settings.kwManga)
-            Stepper("Épisode testé (séries) : \(settings.serieEpisode)",
+        Section(L("Keywords by type")) {
+            LabeledField(label: L("Anime"), text: $settings.kwAnime)
+            LabeledField(label: L("Film"), text: $settings.kwFilm)
+            LabeledField(label: L("Series"), text: $settings.kwSerie)
+            LabeledField(label: L("Manga"), text: $settings.kwManga)
+            Stepper("\(L("Tested episode (series)")): \(settings.serieEpisode)",
                     value: $settings.serieEpisode, in: 1...500)
         }
     }
@@ -52,7 +52,7 @@ struct MassTestView: View {
     private var modulesSection: some View {
         Section {
             if store.modules.isEmpty {
-                Text("Aucun module installé.").foregroundStyle(.secondary)
+                Text(L("No module installed.")).foregroundStyle(.secondary)
             }
             ForEach(store.modules) { module in
                 let cats = TestCategory.categories(from: module.manifest.type)
@@ -65,7 +65,7 @@ struct MassTestView: View {
                                 .foregroundStyle(selected.contains(module.id) ? Color.accentColor : .secondary)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(module.name).foregroundStyle(.primary)
-                                Text(effectiveCategory(module).label + (cats.count > 1 ? " · multi-type" : ""))
+                                Text(L(effectiveCategory(module).label) + (cats.count > 1 ? " · " + L("multi-type") : ""))
                                     .font(.caption2).foregroundStyle(.secondary)
                             }
                         }
@@ -74,7 +74,7 @@ struct MassTestView: View {
                     Spacer()
                     if cats.count > 1 {
                         Menu {
-                            Button("Auto (\(TestCategory.from(type: module.manifest.type).label))") {
+                            Button("\(L("Auto")) (\(L(TestCategory.from(type: module.manifest.type).label)))") {
                                 overrides[module.id] = nil
                             }
                             ForEach(cats) { c in
@@ -92,9 +92,9 @@ struct MassTestView: View {
             }
         } header: {
             HStack {
-                Text("Modules à tester (\(selected.count))")
+                Text("\(L("Modules to test")) (\(selected.count))")
                 Spacer()
-                Button(selected.count == store.modules.count ? "Aucun" : "Tous") {
+                Button(selected.count == store.modules.count ? L("None") : L("All")) {
                     selected = selected.count == store.modules.count ? [] : Set(store.modules.map(\.id))
                 }
                 .font(.caption)
@@ -112,10 +112,10 @@ struct MassTestView: View {
                 HStack {
                     if tester.isRunning {
                         ProgressView().padding(.trailing, 4)
-                        Text("Test en cours…")
+                        Text(L("Testing…"))
                     } else {
                         Image(systemName: "play.fill")
-                        Text("Lancer le test (\(selected.count))")
+                        Text("\(L("Run test")) (\(selected.count))")
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -126,9 +126,9 @@ struct MassTestView: View {
     }
 
     private var resultsSection: some View {
-        Section("Résultats") {
+        Section(L("Results")) {
             HStack {
-                Label("\(tester.okCount)/\(tester.reports.count) modules OK",
+                Label("\(tester.okCount)/\(tester.reports.count) \(L("modules OK"))",
                       systemImage: tester.okCount == tester.reports.count
                         ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                     .foregroundStyle(tester.okCount == tester.reports.count ? .green : .orange)
@@ -137,13 +137,13 @@ struct MassTestView: View {
                 Menu {
                     Button {
                         UIPasteboard.general.string = tester.reportText()
-                    } label: { Label("Copier (texte)", systemImage: "doc.on.doc") }
+                    } label: { Label(L("Copy (text)"), systemImage: "doc.on.doc") }
                     Button {
                         exportFile(tester.reportText(), ext: "txt")
-                    } label: { Label("Partager .txt", systemImage: "doc.text") }
+                    } label: { Label(L("Share .txt"), systemImage: "doc.text") }
                     Button {
                         exportFile(tester.reportJSON(), ext: "json")
-                    } label: { Label("Partager .json", systemImage: "curlybraces") }
+                    } label: { Label(L("Share .json"), systemImage: "curlybraces") }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
@@ -158,7 +158,7 @@ struct MassTestView: View {
                 .contextMenu {
                     Button {
                         Task { await tester.runSingle(reportId: report.id, debugLog: debugLog, settings: settings) }
-                    } label: { Label("Relancer ce module", systemImage: "arrow.clockwise") }
+                    } label: { Label(L("Relaunch this module"), systemImage: "arrow.clockwise") }
                     .disabled(tester.isRunning)
                 }
             }
@@ -185,7 +185,7 @@ private struct LabeledField: View {
     var body: some View {
         HStack {
             Text(label).frame(width: 60, alignment: .leading)
-            TextField("mot-clé", text: $text)
+            TextField(L("keyword"), text: $text)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .multilineTextAlignment(.trailing)
@@ -212,7 +212,7 @@ private struct ReportRow: View {
                         Image(systemName: step.status.icon)
                             .font(.caption)
                             .foregroundStyle(step.status.color)
-                        Text(String(step.name.prefix(4)))
+                        Text(String(L(step.name).prefix(4)))
                             .font(.system(size: 8))
                             .foregroundStyle(.secondary)
                     }
@@ -244,7 +244,7 @@ private struct ReportDetailView: View {
     private func syntaxSnippet(_ report: ModuleTestReport) -> (fault: Int, lines: [(Int, String)])? {
         guard let load = report.steps.first(where: { $0.name == "Chargement" }),
               load.status == .failure, let detail = load.detail,
-              let range = detail.range(of: #"ligne (\d+)"#, options: .regularExpression),
+              let range = detail.range(of: #"line (\d+)"#, options: .regularExpression),
               let faultLine = Int(detail[range].filter(\.isNumber)) else { return nil }
         let all = report.module.scriptContent.components(separatedBy: "\n")
         guard faultLine >= 1, faultLine <= all.count else { return nil }
@@ -257,7 +257,7 @@ private struct ReportDetailView: View {
             if let report {
                 content(report)
             } else {
-                Text("Rapport indisponible.").foregroundStyle(.secondary)
+                Text(L("Report unavailable.")).foregroundStyle(.secondary)
             }
         }
         .sheet(item: $jsonSheet) { payload in
@@ -271,17 +271,17 @@ private struct ReportDetailView: View {
         let syntaxSnippet = syntaxSnippet(report)
         List {
             Section {
-                LabeledContent("Type", value: report.category.label)
-                LabeledContent("Mot-clé", value: report.keyword)
+                LabeledContent(L("Type"), value: L(report.category.label))
+                LabeledContent(L("Keyword"), value: report.keyword)
             }
 
-            Section("Étapes") {
+            Section(L("Steps")) {
                 ForEach(report.steps) { step in
                     HStack(alignment: .top) {
                         Image(systemName: step.status.icon).foregroundStyle(step.status.color)
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Text(step.name)
+                                Text(L(step.name))
                                 Spacer()
                                 if let ms = step.durationMs {
                                     Text("\(ms) ms").font(.caption2).foregroundStyle(.secondary)
@@ -296,7 +296,7 @@ private struct ReportDetailView: View {
                                 Button {
                                     jsonSheet = RawJSONPayload(title: step.name, raw: raw)
                                 } label: {
-                                    Label("Voir le JSON", systemImage: "curlybraces")
+                                    Label(L("See JSON"), systemImage: "curlybraces")
                                         .font(.caption2)
                                 }
                                 .buttonStyle(.borderless)
@@ -307,7 +307,7 @@ private struct ReportDetailView: View {
             }
 
             if let snippet = syntaxSnippet {
-                Section("Code autour de l'erreur (ligne \(snippet.fault))") {
+                Section("\(L("Code around the error")) (\(L("line")) \(snippet.fault))") {
                     VStack(alignment: .leading, spacing: 2) {
                         ForEach(snippet.lines, id: \.0) { lineNo, text in
                             HStack(alignment: .top, spacing: 8) {
@@ -326,14 +326,14 @@ private struct ReportDetailView: View {
                         Button {
                             UIPasteboard.general.string = snippet.lines
                                 .map { "\($0.0): \($0.1)" }.joined(separator: "\n")
-                        } label: { Label("Copier l'extrait", systemImage: "doc.on.doc") }
+                        } label: { Label(L("Copy the snippet"), systemImage: "doc.on.doc") }
                     }
                 }
             }
 
-            Section("Logs du module (\(logs.count))") {
+            Section("\(L("Module logs")) (\(logs.count))") {
                 if logs.isEmpty {
-                    Text("Aucun log capturé.").foregroundStyle(.secondary)
+                    Text(L("No log captured.")).foregroundStyle(.secondary)
                 }
                 ForEach(logs) { entry in
                     VStack(alignment: .leading, spacing: 1) {
@@ -352,7 +352,7 @@ private struct ReportDetailView: View {
                     .contextMenu {
                         Button {
                             UIPasteboard.general.string = entry.message
-                        } label: { Label("Copier ce log", systemImage: "doc.on.doc") }
+                        } label: { Label(L("Copy this log"), systemImage: "doc.on.doc") }
                     }
                 }
             }
@@ -364,7 +364,7 @@ private struct ReportDetailView: View {
                 Button {
                     Task { await tester.runSingle(reportId: reportId, debugLog: debugLog, settings: settings) }
                 } label: {
-                    Label("Relancer", systemImage: "arrow.clockwise")
+                    Label(L("Relaunch"), systemImage: "arrow.clockwise")
                 }
                 .disabled(tester.isRunning)
             }

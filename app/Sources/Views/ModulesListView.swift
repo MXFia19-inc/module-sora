@@ -32,9 +32,9 @@ struct ModulesListView: View {
         List {
             if store.modules.isEmpty {
                 ContentUnavailableViewCompat(
-                    title: "Aucun module",
+                    title: L("No module"),
                     systemImage: "puzzlepiece.extension",
-                    description: "Ajoutez un module par URL, via une bibliothèque (cufiy…), la liste Luna, ou un fichier."
+                    description: L("Add a module by URL, from a library (cufiy…), the Luna list, or a file.")
                 )
             }
             ForEach(displayed) { module in
@@ -45,7 +45,7 @@ struct ModulesListView: View {
                     Button {
                         store.togglePin(module)
                     } label: {
-                        Label(store.isPinned(module) ? "Désépingler" : "Épingler",
+                        Label(store.isPinned(module) ? L("Unpin") : L("Pin"),
                               systemImage: store.isPinned(module) ? "pin.slash" : "pin")
                     }
                     .tint(.yellow)
@@ -53,17 +53,17 @@ struct ModulesListView: View {
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         store.remove(module)
-                    } label: { Label("Supprimer", systemImage: "trash") }
+                    } label: { Label(L("Delete"), systemImage: "trash") }
                     Button {
                         Task { await refresh(module) }
-                    } label: { Label("Rafraîchir", systemImage: "arrow.clockwise") }
+                    } label: { Label(L("Refresh"), systemImage: "arrow.clockwise") }
                     .tint(.blue)
                 }
             }
         }
         .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .automatic),
-                    prompt: "Rechercher un module")
-        .navigationTitle("Modules")
+                    prompt: L("Search a module"))
+        .navigationTitle(L("Modules"))
         .navigationDestination(for: LoadedModule.self) { module in
             ModuleTestView(module: module)
         }
@@ -73,10 +73,10 @@ struct ModulesListView: View {
                     Menu {
                         Button {
                             Task { await refreshAll() }
-                        } label: { Label("Tout rafraîchir", systemImage: "arrow.clockwise") }
+                        } label: { Label(L("Refresh all"), systemImage: "arrow.clockwise") }
                         Button(role: .destructive) {
                             showDeleteAll = true
-                        } label: { Label("Tout supprimer", systemImage: "trash") }
+                        } label: { Label(L("Delete all"), systemImage: "trash") }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -84,11 +84,11 @@ struct ModulesListView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button { showAddURL = true } label: { Label("Ajouter par URL", systemImage: "link") }
-                    Button { showLibrary = true } label: { Label("Bibliothèques (cufiy…)", systemImage: "books.vertical") }
-                    Button { showQuickAdd = true } label: { Label("Modules Luna (MXFia19)", systemImage: "star") }
-                    Button { showPaste = true } label: { Label("Coller du code (local)", systemImage: "curlybraces.square") }
-                    Button { showImporter = true } label: { Label("Importer un fichier", systemImage: "folder") }
+                    Button { showAddURL = true } label: { Label(L("Add by URL"), systemImage: "link") }
+                    Button { showLibrary = true } label: { Label(L("Libraries (cufiy…)"), systemImage: "books.vertical") }
+                    Button { showQuickAdd = true } label: { Label(L("Luna modules (MXFia19)"), systemImage: "star") }
+                    Button { showPaste = true } label: { Label(L("Paste code (local)"), systemImage: "curlybraces.square") }
+                    Button { showImporter = true } label: { Label(L("Import a file"), systemImage: "folder") }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -97,19 +97,19 @@ struct ModulesListView: View {
         .overlay {
             if busy { ProgressView().controlSize(.large) }
         }
-        .alert("Erreur", isPresented: .constant(errorMessage != nil)) {
-            Button("OK") { errorMessage = nil }
+        .alert(L("Error"), isPresented: .constant(errorMessage != nil)) {
+            Button(L("OK")) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
         }
-        .alert("Ajouter par URL", isPresented: $showAddURL) {
+        .alert(L("Add by URL"), isPresented: $showAddURL) {
             TextField("https://…/module.json", text: $urlText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-            Button("Ajouter") { Task { await addByURL() } }
-            Button("Annuler", role: .cancel) { urlText = "" }
+            Button(L("Add")) { Task { await addByURL() } }
+            Button(L("Cancel"), role: .cancel) { urlText = "" }
         } message: {
-            Text("Collez l'URL du manifest .json du module.")
+            Text(L("Paste the module's .json manifest URL."))
         }
         .sheet(isPresented: $showQuickAdd) {
             QuickAddView()
@@ -120,9 +120,9 @@ struct ModulesListView: View {
         .sheet(isPresented: $showPaste) {
             PasteModuleView()
         }
-        .confirmationDialog("Supprimer tous les modules ?", isPresented: $showDeleteAll, titleVisibility: .visible) {
-            Button("Tout supprimer (\(store.modules.count))", role: .destructive) { store.removeAll() }
-            Button("Annuler", role: .cancel) {}
+        .confirmationDialog(L("Delete all modules?"), isPresented: $showDeleteAll, titleVisibility: .visible) {
+            Button("\(L("Delete all")) (\(store.modules.count))", role: .destructive) { store.removeAll() }
+            Button(L("Cancel"), role: .cancel) {}
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -176,7 +176,7 @@ struct ModulesListView: View {
                 else if url.pathExtension.lowercased() == "js" { scriptData = data }
             }
             guard let manifestData else {
-                errorMessage = "Sélectionnez le fichier .json (et son .js) du module."
+                errorMessage = L("Select the module's .json file (and its .js).")
                 return
             }
             // Si le .js n'est pas fourni, on le télécharge depuis scriptUrl.
@@ -187,7 +187,7 @@ struct ModulesListView: View {
                 let (data, _) = try await URLSession.shared.data(from: scriptURL)
                 _ = try store.addLocal(manifestData: manifestData, scriptData: data)
             } else {
-                errorMessage = "Ajoutez aussi le fichier .js du module."
+                errorMessage = L("Also add the module's .js file.")
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -243,19 +243,19 @@ private struct QuickAddView: View {
                     } else if store.modules.contains(where: { $0.manifest.manifestUrl == def.manifestUrl }) {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     } else {
-                        Button("Ajouter") { Task { await add(def) } }
+                        Button(L("Add")) { Task { await add(def) } }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
                     }
                 }
             }
-            .navigationTitle("Modules Luna")
+            .navigationTitle(L("Luna modules"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("Fermer") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(L("Close")) { dismiss() } }
             }
-            .alert("Erreur", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") { errorMessage = nil }
+            .alert(L("Error"), isPresented: .constant(errorMessage != nil)) {
+                Button(L("OK")) { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
         }
     }
