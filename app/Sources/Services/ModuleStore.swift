@@ -35,8 +35,11 @@ enum ModuleStoreError: LocalizedError {
 @MainActor
 final class ModuleStore: ObservableObject {
     @Published private(set) var modules: [LoadedModule] = []
+    /// Identifiants des modules épinglés (favoris).
+    @Published private(set) var pinned: Set<String> = []
 
     private let fileURL: URL
+    private let pinsKey = "pinnedModules"
 
     /// Modules connus de MXFia19 sur la source Luna (ajout en un tap).
     /// Pattern : `…/raw/branch/main/<dossier>/<dossier>.json`.
@@ -62,6 +65,16 @@ final class ModuleStore: ObservableObject {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         fileURL = dir.appendingPathComponent("modules.json")
         load()
+        pinned = Set(UserDefaults.standard.stringArray(forKey: pinsKey) ?? [])
+    }
+
+    // MARK: - Favoris
+
+    func isPinned(_ module: LoadedModule) -> Bool { pinned.contains(module.id) }
+
+    func togglePin(_ module: LoadedModule) {
+        if pinned.contains(module.id) { pinned.remove(module.id) } else { pinned.insert(module.id) }
+        UserDefaults.standard.set(Array(pinned), forKey: pinsKey)
     }
 
     // MARK: - Persistance

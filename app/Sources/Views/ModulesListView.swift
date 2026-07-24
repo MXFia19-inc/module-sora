@@ -14,6 +14,19 @@ struct ModulesListView: View {
     @State private var urlText = ""
     @State private var busy = false
     @State private var errorMessage: String?
+    @State private var search = ""
+
+    /// Modules filtrés par la recherche, épinglés d'abord puis par nom.
+    private var displayed: [LoadedModule] {
+        let filtered = search.isEmpty
+            ? store.modules
+            : store.modules.filter { $0.name.localizedCaseInsensitiveContains(search) }
+        return filtered.sorted { a, b in
+            let pa = store.pinned.contains(a.id), pb = store.pinned.contains(b.id)
+            if pa != pb { return pa }
+            return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+        }
+    }
 
     var body: some View {
         List {
@@ -24,9 +37,18 @@ struct ModulesListView: View {
                     description: "Ajoutez un module par URL, via une bibliothèque (cufiy…), la liste Luna, ou un fichier."
                 )
             }
-            ForEach(store.modules) { module in
+            ForEach(displayed) { module in
                 NavigationLink(value: module) {
-                    ModuleRow(module: module)
+                    ModuleRow(module: module, pinned: store.isPinned(module))
+                }
+                .swipeActions(edge: .leading) {
+                    Button {
+                        store.togglePin(module)
+                    } label: {
+                        Label(store.isPinned(module) ? "Désépingler" : "Épingler",
+                              systemImage: store.isPinned(module) ? "pin.slash" : "pin")
+                    }
+                    .tint(.yellow)
                 }
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
@@ -39,6 +61,8 @@ struct ModulesListView: View {
                 }
             }
         }
+        .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: "Rechercher un module")
         .navigationTitle("Modules")
         .navigationDestination(for: LoadedModule.self) { module in
             ModuleTestView(module: module)
@@ -174,13 +198,19 @@ struct ModulesListView: View {
 /// Ligne d'un module dans la liste.
 private struct ModuleRow: View {
     let module: LoadedModule
+    var pinned: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
             RemoteImage(url: module.manifest.iconUrl, cornerRadius: 8)
                 .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 2) {
-                Text(module.name).font(.headline)
+                HStack(spacing: 4) {
+                    if pinned {
+                        Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.yellow)
+                    }
+                    Text(module.name).font(.headline)
+                }
                 HStack(spacing: 6) {
                     Text("v\(module.manifest.version)")
                     if let lang = module.manifest.language { Text("· \(lang)") }
