@@ -37,7 +37,7 @@ struct MassTestView: View {
     private var keywordsSection: some View {
         Section(L("Keywords by type")) {
             LabeledField(label: L("Anime"), text: $settings.kwAnime)
-            LabeledField(label: L("Film"), text: $settings.kwFilm)
+            LabeledField(label: L("Movie"), text: $settings.kwFilm)
             LabeledField(label: L("Series"), text: $settings.kwSerie)
             LabeledField(label: L("Manga"), text: $settings.kwManga)
             Stepper("\(L("Tested episode (series)")): \(settings.serieEpisode)",

@@ -9,7 +9,7 @@ enum TestCategory: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .anime: return "Anime"
-        case .film: return "Film"
+        case .film: return "Movie"
         case .serie: return "Series"
         case .manga: return "Manga"
         }
