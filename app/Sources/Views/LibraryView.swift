@@ -12,16 +12,23 @@ struct LibraryView: View {
     @State private var errorMessage: String?
     @State private var busyKey: String?
     @State private var languageFilter: String?
+    @State private var searchText = ""
 
     /// Langues distinctes présentes dans l'index (triées).
     private var languages: [String] {
         Array(Set(entries.compactMap { $0.language })).sorted()
     }
 
-    /// Entrées filtrées par langue, triées par popularité décroissante.
+    /// Entrées filtrées par recherche + langue, triées par popularité décroissante.
     private var filteredEntries: [LibraryModuleEntry] {
-        entries
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        return entries
             .filter { languageFilter == nil || $0.language == languageFilter }
+            .filter { entry in
+                guard !query.isEmpty else { return true }
+                let hay = "\(entry.name) \(entry.author ?? "") \(entry.type ?? "") \(entry.language ?? "")".lowercased()
+                return hay.contains(query)
+            }
             .sorted { ($0.installCount ?? 0) > ($1.installCount ?? 0) }
     }
 
@@ -84,6 +91,8 @@ struct LibraryView: View {
             }
             .navigationTitle("Bibliothèques")
             .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "Rechercher (nom, auteur, type…)")
             .keyboardDoneToolbar()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { Button("Fermer") { dismiss() } }
