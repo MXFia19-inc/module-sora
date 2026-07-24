@@ -186,7 +186,7 @@ struct RequestReplayView: View {
     @State private var isLoading = false
     @State private var status: Int?
     @State private var responseHeaders: [String: String] = [:]
-    @State private var body = ""
+    @State private var responseBody = ""
     @State private var errorMessage: String?
 
     var body: some View {
@@ -215,11 +215,11 @@ struct RequestReplayView: View {
                             Text("\(status)")
                                 .foregroundStyle((200...299).contains(status) ? .green : .red)
                         }
-                        Text("\(body.count) caractères").font(.caption2).foregroundStyle(.secondary)
+                        Text("\(responseBody.count) caractères").font(.caption2).foregroundStyle(.secondary)
                     }
                     Section("Corps") {
                         ScrollView(.horizontal) {
-                            Text(body.isEmpty ? "(vide)" : body)
+                            Text(responseBody.isEmpty ? "(vide)" : responseBody)
                                 .font(.system(.caption2, design: .monospaced))
                                 .textSelection(.enabled)
                         }
@@ -236,9 +236,9 @@ struct RequestReplayView: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Fermer") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        UIPasteboard.general.string = body
+                        UIPasteboard.general.string = responseBody
                     } label: { Image(systemName: "doc.on.doc") }
-                        .disabled(body.isEmpty)
+                        .disabled(responseBody.isEmpty)
                 }
             }
             .overlay { if isLoading { ProgressView().controlSize(.large) } }
@@ -257,7 +257,7 @@ struct RequestReplayView: View {
             )
             status = resp.status
             responseHeaders = resp.headers
-            body = String(data: resp.body, encoding: .utf8) ?? String(decoding: resp.body, as: UTF8.self)
+            responseBody = String(data: resp.body, encoding: .utf8) ?? String(decoding: resp.body, as: UTF8.self)
         } catch {
             errorMessage = error.localizedDescription
         }
