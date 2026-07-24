@@ -83,6 +83,7 @@ let frenchStrings: [String: String] = [
     "Anime": "Anime", "Film": "Film", "Series": "Série", "Manga": "Manga",
     "keyword": "mot-clé",
     "Auto": "Auto",
+    "Set all": "Tout définir",
     "Loading": "Chargement",
     "Search": "Recherche",
     "Details": "Détails",

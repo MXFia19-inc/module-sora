@@ -91,15 +91,37 @@ struct MassTestView: View {
                 }
             }
         } header: {
-            HStack {
+            HStack(spacing: 12) {
                 Text("\(L("Modules to test")) (\(selected.count))")
                 Spacer()
+                Menu {
+                    Button(L("Auto")) { setAllCategories(nil) }
+                    ForEach(TestCategory.allCases) { c in
+                        Button(L(c.label)) { setAllCategories(c) }
+                    }
+                } label: {
+                    HStack(spacing: 2) {
+                        Text(L("Set all"))
+                        Image(systemName: "chevron.up.chevron.down")
+                    }
+                    .font(.caption)
+                    .textCase(nil)
+                }
                 Button(selected.count == store.modules.count ? L("None") : L("All")) {
                     selected = selected.count == store.modules.count ? [] : Set(store.modules.map(\.id))
                 }
                 .font(.caption)
                 .textCase(nil)
             }
+        }
+    }
+
+    /// Applique une catégorie (ou Auto = nil) à TOUS les modules d'un coup.
+    private func setAllCategories(_ category: TestCategory?) {
+        if let category {
+            for module in store.modules { overrides[module.id] = category }
+        } else {
+            overrides.removeAll()
         }
     }
 
