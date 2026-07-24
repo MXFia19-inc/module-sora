@@ -59,18 +59,17 @@ final class AppSettings: ObservableObject {
         static let kwManga = "kwManga"
         static let serieEp = "serieEpisode"
         static let language = "appLanguage"
+        static let supabaseMigration = "migratedSupabase"
     }
 
     private static let defaultUA =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
-    /// Motifs par défaut : anciens webhooks Discord (sans risque).
-    /// Pour le tracking Supabase, ajoute dans les Réglages l'endpoint EXACT
-    /// (ex. `<projet>.supabase.co/rest/v1/<table_de_tracking>`) — ne bloque pas
-    /// tout Supabase, au cas où un module y lise aussi ses données.
+    /// Motifs bloqués par défaut : webhooks Discord + Supabase.
     private static let defaultPatterns = """
     discord.com/api/webhooks
     discordapp.com/api/webhooks
+    supabase.co
     """
 
     init() {
@@ -78,7 +77,19 @@ final class AppSettings: ObservableObject {
         jsTimeout = d.object(forKey: Keys.timeout) as? Double ?? 30
         blockWebhooks = d.object(forKey: Keys.block) as? Bool ?? true
         defaultUserAgent = d.string(forKey: Keys.ua) ?? Self.defaultUA
-        blockedPatternsText = d.string(forKey: Keys.patterns) ?? Self.defaultPatterns
+
+        // Motifs bloqués + migration ponctuelle pour ajouter « supabase.co »
+        // aux réglages déjà enregistrés (une seule fois : retirable ensuite).
+        var patterns = d.string(forKey: Keys.patterns) ?? Self.defaultPatterns
+        if !d.bool(forKey: Keys.supabaseMigration) {
+            if !patterns.contains("supabase.co") {
+                let trimmed = patterns.trimmingCharacters(in: .whitespacesAndNewlines)
+                patterns = trimmed.isEmpty ? "supabase.co" : trimmed + "\nsupabase.co"
+            }
+            d.set(true, forKey: Keys.supabaseMigration)
+            d.set(patterns, forKey: Keys.patterns)
+        }
+        blockedPatternsText = patterns
         kwAnime = d.string(forKey: Keys.kwAnime) ?? "one piece"
         kwFilm = d.string(forKey: Keys.kwFilm) ?? "interstellar"
         kwSerie = d.string(forKey: Keys.kwSerie) ?? "breaking bad"

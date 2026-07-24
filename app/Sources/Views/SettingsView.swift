@@ -38,8 +38,6 @@ struct SettingsView: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                     }
-                } footer: {
-                    Text(L("Any fetchv2 request whose URL contains one of these patterns is blocked (empty response). For Supabase tracking, add the exact endpoint, e.g. « project.supabase.co/rest/v1/tracking ». Don't block all « supabase.co » if a module also reads its data there."))
                 }
             }
 
