@@ -27,6 +27,7 @@ struct MassTestView: View {
             runSection
             if !tester.reports.isEmpty { resultsSection }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle(L("Mass test"))
         .navigationBarTitleDisplayMode(.inline)
         .keyboardDoneToolbar()

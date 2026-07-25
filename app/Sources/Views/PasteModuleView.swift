@@ -117,6 +117,7 @@ struct PasteModuleView: View {
                     .disabled(scriptEmpty)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(L("Paste a module"))
             .navigationBarTitleDisplayMode(.inline)
             .keyboardDoneToolbar()

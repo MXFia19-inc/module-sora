@@ -5,6 +5,10 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var store: ModuleStore
 
+    /// Champs de saisie de l'écran (pour pouvoir fermer le clavier à coup sûr).
+    private enum Field: Hashable { case patterns, userAgent, webhook }
+    @FocusState private var focusedField: Field?
+
     var body: some View {
         Form {
             Section(L("Interface")) {
@@ -49,6 +53,7 @@ struct SettingsView: View {
                     Text(L("Discord webhook")).font(.caption).foregroundStyle(.secondary)
                     TextField("https://discord.com/api/webhooks/…",
                               text: $settings.discordWebhook, axis: .vertical)
+                        .focused($focusedField, equals: .webhook)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(1...3)
                         .textInputAutocapitalization(.never)
@@ -66,6 +71,7 @@ struct SettingsView: View {
                         Text(L("Blocked URL patterns (one per line)"))
                             .font(.caption).foregroundStyle(.secondary)
                         TextEditor(text: $settings.blockedPatternsText)
+                            .focused($focusedField, equals: .patterns)
                             .font(.system(.caption, design: .monospaced))
                             .frame(minHeight: 90)
                             .autocorrectionDisabled()
@@ -78,6 +84,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L("Default User-Agent")).font(.caption).foregroundStyle(.secondary)
                     TextField("User-Agent", text: $settings.defaultUserAgent, axis: .vertical)
+                        .focused($focusedField, equals: .userAgent)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(1...4)
                 }
@@ -96,8 +103,14 @@ struct SettingsView: View {
                 Text(L("App to test « Sora » modules. No AniList/social features."))
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle(L("Settings"))
         .navigationBarTitleDisplayMode(.inline)
-        .keyboardDoneToolbar()
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L("Done")) { focusedField = nil }
+            }
+        }
     }
 }
