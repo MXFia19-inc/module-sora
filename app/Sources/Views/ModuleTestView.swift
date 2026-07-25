@@ -55,6 +55,7 @@ struct ModuleTestView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var session: TestSession
     @State private var jsonSheet: RawJSONPayload?
+    @State private var showConsole = false
 
     private let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
 
@@ -94,10 +95,18 @@ struct ModuleTestView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    showConsole = true
+                } label: { Image(systemName: "terminal") }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     jsonSheet = RawJSONPayload(title: "searchResults", raw: session.lastRaw)
                 } label: { Image(systemName: "curlybraces") }
                     .disabled(session.lastRaw.isEmpty)
             }
+        }
+        .sheet(isPresented: $showConsole) {
+            JSConsoleView(runner: session.runner, moduleName: module.name)
         }
         .sheet(item: $jsonSheet) { payload in
             RawJSONView(title: payload.title, raw: payload.raw)

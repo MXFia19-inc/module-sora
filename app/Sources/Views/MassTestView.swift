@@ -9,6 +9,7 @@ struct MassTestView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var tester: MassTester
     @EnvironmentObject private var presetStore: PresetStore
+    @EnvironmentObject private var history: HistoryStore
 
     @State private var selected: Set<String> = []
     /// Catégorie choisie manuellement par id de module (absent = Auto).
@@ -216,6 +217,7 @@ struct MassTestView: View {
                     await tester.run(modules: modules, overrides: overrides,
                                      customKeywords: customKeywords,
                                      debugLog: debugLog, settings: settings)
+                    history.record(tester.reports)
                     if settings.autoSendReport, settings.hasWebhook { sendToDiscord() }
                 }
             } label: {

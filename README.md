@@ -44,6 +44,12 @@ inspect exactly what each module function returned.
   rate limiting, server errors or timeouts.
 - **Export** the report: copy as text, share as `.txt` / `.json`, or **post the summary
   to a Discord webhook** (manually, or automatically after every run).
+- **History & comparison** — every run is recorded; each one is diffed against the
+  previous run so you immediately see **regressions** (a step that was passing and now
+  fails) and **fixes**.
+- **Scheduled monitoring** — re-runs a chosen preset on an interval (30 min → 24 h) and
+  reports to Discord, optionally **only when something regresses**. Reliable while the
+  app is open; iOS grants background runs on a best-effort basis only.
 - **Set all** — apply one category to every module at once.
 - **Tested episode** — choose which episode number series modules should test.
 
@@ -56,6 +62,8 @@ inspect exactly what each module function returned.
 - **Blocked calls** (trackers) are flagged with an orange `BLOCKED` badge.
 - **Code editor** with line numbers, a **syntax check**, and a **Go to line** button
   that jumps to and highlights the offending line.
+- **Interactive JS console** — run arbitrary JavaScript inside a loaded module's live
+  context (`await searchResults("…")`, inspect globals) without restarting anything.
 - **Cloudflare bypass**: when a module hits a "Just a moment…" page, the challenge is
   solved in a hidden web view and the resulting cookies — together with the web view's
   User-Agent, which the clearance cookie is bound to — are reused for that host, and

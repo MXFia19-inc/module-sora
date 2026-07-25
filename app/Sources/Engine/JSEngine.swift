@@ -154,6 +154,72 @@ final class JSEngine {
         return value.toString() ?? ""
     }
 
+    // MARK: - Console interactive
+
+    /// Évalue du JS arbitraire dans le contexte du module (console interactive).
+    /// Accepte aussi bien une expression (`await searchResults("x")`) qu'un bloc
+    /// d'instructions, et résout les Promises.
+    func evaluateExpression(_ code: String) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [self] in
+                context.exception = nil
+                // 1) tenter comme expression (permet `await …` au niveau racine)
+                var result = context.evaluateScript("(async () => (\n\(code)\n))()")
+                if context.exception != nil {
+                    context.exception = nil
+                    // 2) sinon, comme corps de fonction (instructions, `return …`)
+                    result = context.evaluateScript("(async () => {\n\(code)\n})()")
+                }
+                if let ex = context.exception {
+                    let msg = ex.toString() ?? "exception"
+                    context.exception = nil
+                    continuation.resume(throwing: JSEngineError.jsError(msg)); return
+                }
+                guard let result else {
+                    continuation.resume(returning: "undefined"); return
+                }
+                guard result.hasProperty("then") else {
+                    continuation.resume(returning: pretty(result)); return
+                }
+
+                let guardBox = ResumeGuard()
+                let timeoutItem = DispatchWorkItem {
+                    guard guardBox.tryResume() else { return }
+                    continuation.resume(throwing: JSEngineError.timeout("console", self.timeout))
+                }
+                queue.asyncAfter(deadline: .now() + timeout, execute: timeoutItem)
+
+                let onResolve: @convention(block) (JSValue?) -> Void = { [weak self] value in
+                    guard guardBox.tryResume() else { return }
+                    timeoutItem.cancel()
+                    continuation.resume(returning: self?.pretty(value) ?? "")
+                }
+                let onReject: @convention(block) (JSValue?) -> Void = { err in
+                    guard guardBox.tryResume() else { return }
+                    timeoutItem.cancel()
+                    continuation.resume(throwing: JSEngineError.jsError(err?.toString() ?? "rejected"))
+                }
+                result.invokeMethod("then", withArguments: [
+                    JSValue(object: onResolve, in: context) as Any,
+                    JSValue(object: onReject, in: context) as Any,
+                ])
+            }
+        }
+    }
+
+    /// Rend une valeur lisible (JSON indenté pour les objets). À appeler sur `queue`.
+    private func pretty(_ value: JSValue?) -> String {
+        guard let value, !value.isUndefined else { return "undefined" }
+        if value.isNull { return "null" }
+        if value.isString || value.isNumber || value.isBoolean { return value.toString() ?? "" }
+        if let json = context.objectForKeyedSubscript("JSON"),
+           let text = json.invokeMethod("stringify", withArguments: [value, NSNull(), 2]),
+           !text.isUndefined, let string = text.toString() {
+            return string
+        }
+        return value.toString() ?? ""
+    }
+
     /// Journalise vers le buffer de debug (toujours sur le main).
     private func log(_ kind: LogKind, _ message: String, detail: String? = nil) {
         let module = moduleName

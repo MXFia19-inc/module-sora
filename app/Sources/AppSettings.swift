@@ -41,6 +41,20 @@ final class AppSettings: ObservableObject {
     /// Envoyer automatiquement le résumé à la fin d'un test en masse.
     @Published var autoSendReport: Bool { didSet { defaults.set(autoSendReport, forKey: Keys.autoSend) } }
 
+    // MARK: - Surveillance planifiée
+
+    @Published var monitorEnabled: Bool { didSet { defaults.set(monitorEnabled, forKey: Keys.monitorOn) } }
+    /// Intervalle entre deux cycles, en heures (0.5 = 30 min).
+    @Published var monitorHours: Double { didSet { defaults.set(monitorHours, forKey: Keys.monitorHours) } }
+    /// Nom du préréglage surveillé (vide = tous les modules).
+    @Published var monitorPresetName: String { didSet { defaults.set(monitorPresetName, forKey: Keys.monitorPreset) } }
+    /// N'envoyer une notification qu'en cas de régression.
+    @Published var monitorOnlyOnRegression: Bool { didSet { defaults.set(monitorOnlyOnRegression, forKey: Keys.monitorRegressionOnly) } }
+
+    var monitorInterval: TimeInterval { max(0.5, monitorHours) * 3600 }
+
+    static let monitorChoices: [Double] = [0.5, 1, 3, 6, 12, 24]
+
     var hasWebhook: Bool {
         !discordWebhook.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -80,6 +94,10 @@ final class AppSettings: ObservableObject {
         static let kwCustom = "kwCustom"
         static let checkStreams = "checkStreams"
         static let cloudflare = "cloudflareBypass"
+        static let monitorOn = "monitorEnabled"
+        static let monitorHours = "monitorHours"
+        static let monitorPreset = "monitorPresetName"
+        static let monitorRegressionOnly = "monitorOnlyOnRegression"
         static let webhook = "discordWebhook"
         static let autoSend = "autoSendReport"
         static let serieEp = "serieEpisode"
@@ -122,6 +140,10 @@ final class AppSettings: ObservableObject {
         kwCustom = d.string(forKey: Keys.kwCustom) ?? ""
         checkStreams = d.object(forKey: Keys.checkStreams) as? Bool ?? false
         cloudflareBypass = d.object(forKey: Keys.cloudflare) as? Bool ?? true
+        monitorEnabled = d.object(forKey: Keys.monitorOn) as? Bool ?? false
+        monitorHours = d.object(forKey: Keys.monitorHours) as? Double ?? 6
+        monitorPresetName = d.string(forKey: Keys.monitorPreset) ?? ""
+        monitorOnlyOnRegression = d.object(forKey: Keys.monitorRegressionOnly) as? Bool ?? true
         discordWebhook = d.string(forKey: Keys.webhook) ?? ""
         autoSendReport = d.object(forKey: Keys.autoSend) as? Bool ?? false
         serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1

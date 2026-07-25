@@ -246,8 +246,10 @@ final class MassTester: ObservableObject {
     }
 
     /// Envoie le résumé du test en masse à un webhook Discord.
+    /// `diff` ajoute les régressions et corrections depuis le lancement précédent.
     @discardableResult
-    func sendReportToDiscord(webhook: String) async throws -> Int {
+    func sendReportToDiscord(webhook: String, diff: RunDiff? = nil,
+                             source: String? = nil) async throws -> Int {
         let trimmed = webhook.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), trimmed.hasPrefix("http") else {
             throw WebhookError.badURL
@@ -264,15 +266,27 @@ final class MassTester: ObservableObject {
             lines.append(line)
         }
         var description = lines.joined(separator: "\n")
+
+        // Régressions / corrections depuis le lancement précédent.
+        if let diff, !diff.isEmpty {
+            if !diff.regressions.isEmpty {
+                description += "\n\n**⚠️ Regressions**\n" + diff.regressions.prefix(15).joined(separator: "\n")
+            }
+            if !diff.fixes.isEmpty {
+                description += "\n\n**✅ Fixed**\n" + diff.fixes.prefix(15).joined(separator: "\n")
+            }
+        }
         if description.count > 3800 {
             description = String(description.prefix(3800)) + "\n…"
         }
 
         let allOK = okCount == reports.count && !reports.isEmpty
-        let color = allOK ? 5763719 : (okCount == 0 ? 15548997 : 16705372) // vert / rouge / orange
+        let hasRegression = !(diff?.regressions.isEmpty ?? true)
+        let color = hasRegression ? 15548997 : (allOK ? 5763719 : (okCount == 0 ? 15548997 : 16705372))
+        let title = "ModuleTester\(source.map { " (\($0))" } ?? "") — \(okCount)/\(reports.count) modules OK"
         let payload: [String: Any] = [
             "embeds": [[
-                "title": "ModuleTester — \(okCount)/\(reports.count) modules OK",
+                "title": title,
                 "description": description.isEmpty ? "—" : description,
                 "color": color,
                 "timestamp": ISO8601DateFormatter().string(from: Date()),

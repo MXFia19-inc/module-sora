@@ -25,6 +25,11 @@ final class ModuleRunner {
         engine.dispose()
     }
 
+    /// Évalue du JS dans le contexte vivant du module (console interactive).
+    func eval(_ code: String) async throws -> String {
+        try await engine.evaluateExpression(code)
+    }
+
     // MARK: - Fonctions du contrat
 
     func search(_ keyword: String) async throws -> RunResult<[SearchItem]> {

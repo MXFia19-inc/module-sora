@@ -97,6 +97,38 @@ let frenchStrings: [String: String] = [
     "In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…":
         "Dans le test en masse, sonde chaque lien de flux retourné (avec ses en-têtes) pour détecter les serveurs morts, les 403 (mauvais en-têtes), les délais dépassés…",
     "Links": "Liens",
+    // Console interactive
+    "Reuse": "Réutiliser",
+    "JS expression…": "Expression JS…",
+    "Type JavaScript to run it inside the module's context.":
+        "Tapez du JavaScript pour l'exécuter dans le contexte du module.",
+
+    // Historique
+    "History": "Historique",
+    "No run yet": "Aucun lancement",
+    "Mass test runs are recorded here so you can compare them.":
+        "Les lancements du test en masse sont enregistrés ici pour pouvoir les comparer.",
+    "Changes since previous run": "Changements depuis le lancement précédent",
+    "Date": "Date",
+    "Source": "Origine",
+    "Result": "Résultat",
+    "new": "nouveau",
+    "removed": "retiré",
+
+    // Surveillance
+    "Monitoring": "Surveillance",
+    "Scheduled monitoring": "Surveillance planifiée",
+    "Interval": "Intervalle",
+    "Monitored preset": "Préréglage surveillé",
+    "Notify only on regression": "Notifier seulement en cas de régression",
+    "Last run": "Dernier lancement",
+    "Last result": "Dernier résultat",
+    "Run monitoring now": "Lancer la surveillance maintenant",
+    "No module to monitor.": "Aucun module à surveiller.",
+    "%@ regression(s)": "%@ régression(s)",
+    "Re-runs the selected preset on a schedule and reports regressions. Runs reliably while the app is open; iOS only allows best-effort background runs.":
+        "Relance le préréglage choisi à intervalle régulier et signale les régressions. Fiable tant que l'app est ouverte ; iOS ne permet qu'une exécution « au mieux » en arrière-plan.",
+
     "Cloudflare bypass": "Contournement Cloudflare",
     "Reset Cloudflare clearances": "Réinitialiser les clearances Cloudflare",
     "When a module hits a « Just a moment… » page, the challenge is solved in a hidden web view and the resulting cookies (and its User-Agent) are reused for the module's requests.":

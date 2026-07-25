@@ -57,7 +57,8 @@ jobs:
           find . -name "Info.plist" -exec plutil -replace UILaunchScreen -xml "<dict/>" {} \;
 
           # PiP / audio en arrière-plan
-          find . -name "Info.plist" -exec plutil -replace UIBackgroundModes -json '["audio"]' {} \;
+          find . -name "Info.plist" -exec plutil -replace UIBackgroundModes -json '["audio","fetch"]' {} \;
+          find . -name "Info.plist" -exec plutil -replace BGTaskSchedulerPermittedIdentifiers -json '["com.mxfia19.ModuleTester.monitor"]' {} \;
 
           # ATS : autorise l'HTTP en clair (les modules visent des hébergeurs http://)
           find . -name "Info.plist" -exec plutil -replace NSAppTransportSecurity -json '{"NSAllowsArbitraryLoads": true}' {} \;
