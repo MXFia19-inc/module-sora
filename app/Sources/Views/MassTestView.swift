@@ -18,6 +18,7 @@ struct MassTestView: View {
     @State private var sharePayload: SharePayload?
     @State private var showSavePreset = false
     @State private var presetName = ""
+    @State private var webhookMessage: String?
 
     var body: some View {
         Form {
@@ -31,6 +32,11 @@ struct MassTestView: View {
         .keyboardDoneToolbar()
         .sheet(item: $sharePayload) { payload in
             ShareSheet(items: [payload.url])
+        }
+        .alert(L("Discord"), isPresented: .constant(webhookMessage != nil)) {
+            Button(L("OK")) { webhookMessage = nil }
+        } message: {
+            Text(webhookMessage ?? "")
         }
         .alert(L("Save as preset…"), isPresented: $showSavePreset) {
             TextField(L("Preset name"), text: $presetName)
@@ -209,6 +215,7 @@ struct MassTestView: View {
                     await tester.run(modules: modules, overrides: overrides,
                                      customKeywords: customKeywords,
                                      debugLog: debugLog, settings: settings)
+                    if settings.autoSendReport, settings.hasWebhook { sendToDiscord() }
                 }
             } label: {
                 HStack {
@@ -246,6 +253,12 @@ struct MassTestView: View {
                     Button {
                         exportFile(tester.reportJSON(), ext: "json")
                     } label: { Label(L("Share .json"), systemImage: "curlybraces") }
+                    if settings.hasWebhook {
+                        Divider()
+                        Button {
+                            sendToDiscord()
+                        } label: { Label(L("Send to Discord"), systemImage: "paperplane") }
+                    }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
@@ -263,6 +276,18 @@ struct MassTestView: View {
                     } label: { Label(L("Relaunch this module"), systemImage: "arrow.clockwise") }
                     .disabled(tester.isRunning)
                 }
+            }
+        }
+    }
+
+    /// Envoie le résumé au webhook Discord configuré.
+    private func sendToDiscord() {
+        Task {
+            do {
+                try await tester.sendReportToDiscord(webhook: settings.discordWebhook)
+                webhookMessage = L("Report sent to Discord.")
+            } catch {
+                webhookMessage = error.localizedDescription
             }
         }
     }

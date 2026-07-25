@@ -42,7 +42,8 @@ inspect exactly what each module function returned.
 - **Stream link check** (optional setting): probes every returned stream URL *with its
   own headers* to tell a dead server (404/410) from rejected headers (401/403),
   rate limiting, server errors or timeouts.
-- **Export** the report: copy as text, or share as `.txt` / `.json`.
+- **Export** the report: copy as text, share as `.txt` / `.json`, or **post the summary
+  to a Discord webhook** (manually, or automatically after every run).
 - **Set all** — apply one category to every module at once.
 - **Tested episode** — choose which episode number series modules should test.
 
@@ -64,7 +65,8 @@ Outplayer.
 
 ### Settings
 Interface language (**English** / Français), JS execution timeout, tracker blocking
-with an editable pattern list, default User-Agent, and stream link checking.
+with an editable pattern list, default User-Agent, stream link checking, and a
+**Discord webhook** for mass test summaries.
 
 ---
 

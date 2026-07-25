@@ -97,6 +97,15 @@ let frenchStrings: [String: String] = [
     "In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…":
         "Dans le test en masse, sonde chaque lien de flux retourné (avec ses en-têtes) pour détecter les serveurs morts, les 403 (mauvais en-têtes), les délais dépassés…",
     "Links": "Liens",
+    "Discord": "Discord",
+    "Discord webhook": "Webhook Discord",
+    "Send to Discord": "Envoyer sur Discord",
+    "Send automatically after a mass test": "Envoyer automatiquement après un test en masse",
+    "Posts the mass test summary to a Discord channel. Leave empty to disable.":
+        "Publie le résumé du test en masse dans un salon Discord. Laisser vide pour désactiver.",
+    "Report sent to Discord.": "Résumé envoyé sur Discord.",
+    "Invalid webhook URL.": "URL de webhook invalide.",
+    "Discord refused the request (HTTP %@).": "Discord a refusé la requête (HTTP %@).",
     "Loading": "Chargement",
     "Search": "Recherche",
     "Details": "Détails",

@@ -33,6 +33,22 @@ struct SettingsView: View {
                 Text(L("In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…"))
             }
 
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("Discord webhook")).font(.caption).foregroundStyle(.secondary)
+                    TextField("https://discord.com/api/webhooks/…",
+                              text: $settings.discordWebhook, axis: .vertical)
+                        .font(.system(.caption, design: .monospaced))
+                        .lineLimit(1...3)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
+                Toggle(L("Send automatically after a mass test"), isOn: $settings.autoSendReport)
+                    .disabled(!settings.hasWebhook)
+            } footer: {
+                Text(L("Posts the mass test summary to a Discord channel. Leave empty to disable."))
+            }
+
             if settings.blockWebhooks {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {

@@ -32,6 +32,16 @@ final class AppSettings: ObservableObject {
     /// Vérifier chaque lien de flux retourné (serveur mort, en-têtes invalides…).
     @Published var checkStreams: Bool { didSet { defaults.set(checkStreams, forKey: Keys.checkStreams) } }
 
+    /// URL d'un webhook Discord pour recevoir le résumé du test en masse.
+    @Published var discordWebhook: String { didSet { defaults.set(discordWebhook, forKey: Keys.webhook) } }
+
+    /// Envoyer automatiquement le résumé à la fin d'un test en masse.
+    @Published var autoSendReport: Bool { didSet { defaults.set(autoSendReport, forKey: Keys.autoSend) } }
+
+    var hasWebhook: Bool {
+        !discordWebhook.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func keyword(for category: TestCategory) -> String {
         switch category {
         case .anime: return kwAnime
@@ -66,6 +76,8 @@ final class AppSettings: ObservableObject {
         static let kwManga = "kwManga"
         static let kwCustom = "kwCustom"
         static let checkStreams = "checkStreams"
+        static let webhook = "discordWebhook"
+        static let autoSend = "autoSendReport"
         static let serieEp = "serieEpisode"
         static let language = "appLanguage"
         static let supabaseMigration = "migratedSupabase"
@@ -105,6 +117,8 @@ final class AppSettings: ObservableObject {
         kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
         kwCustom = d.string(forKey: Keys.kwCustom) ?? ""
         checkStreams = d.object(forKey: Keys.checkStreams) as? Bool ?? false
+        discordWebhook = d.string(forKey: Keys.webhook) ?? ""
+        autoSendReport = d.object(forKey: Keys.autoSend) as? Bool ?? false
         serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1
         let lang = AppLanguage(rawValue: d.string(forKey: Keys.language) ?? "en") ?? .en
         language = lang

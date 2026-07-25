@@ -231,6 +231,71 @@ final class MassTester: ObservableObject {
         return s
     }
 
+    // MARK: - Envoi Discord
+
+    enum WebhookError: LocalizedError {
+        case badURL
+        case http(Int)
+
+        var errorDescription: String? {
+            switch self {
+            case .badURL: return L("Invalid webhook URL.")
+            case .http(let code): return Lf("Discord refused the request (HTTP %@).", "\(code)")
+            }
+        }
+    }
+
+    /// Envoie le résumé du test en masse à un webhook Discord.
+    @discardableResult
+    func sendReportToDiscord(webhook: String) async throws -> Int {
+        let trimmed = webhook.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed), trimmed.hasPrefix("http") else {
+            throw WebhookError.badURL
+        }
+
+        var lines: [String] = []
+        for r in reports {
+            var line = "\(symbol(r.overall)) **\(r.module.name)** — \(r.successCount)/\(r.steps.count)"
+            if let failed = r.steps.first(where: { $0.status == .failure }) {
+                // Première ligne du détail seulement (les liens sont multi-lignes).
+                let reason = (failed.detail ?? "failed").split(separator: "\n").first.map(String.init) ?? "failed"
+                line += " · \(failed.name): \(reason)"
+            }
+            lines.append(line)
+        }
+        var description = lines.joined(separator: "\n")
+        if description.count > 3800 {
+            description = String(description.prefix(3800)) + "\n…"
+        }
+
+        let allOK = okCount == reports.count && !reports.isEmpty
+        let color = allOK ? 5763719 : (okCount == 0 ? 15548997 : 16705372) // vert / rouge / orange
+        let payload: [String: Any] = [
+            "embeds": [[
+                "title": "ModuleTester — \(okCount)/\(reports.count) modules OK",
+                "description": description.isEmpty ? "—" : description,
+                "color": color,
+                "timestamp": ISO8601DateFormatter().string(from: Date()),
+            ]],
+        ]
+        let body = String(
+            decoding: (try? JSONSerialization.data(withJSONObject: payload)) ?? Data(),
+            as: UTF8.self
+        )
+
+        let response = try await NetworkFetch.perform(
+            url: url,
+            headers: ["Content-Type": "application/json"],
+            method: "POST",
+            body: body,
+            followRedirects: true
+        )
+        guard (200...299).contains(response.status) else {
+            throw WebhookError.http(response.status)
+        }
+        return response.status
+    }
+
     private func symbol(_ status: StepStatus) -> String {
         switch status {
         case .success: return "✅"
