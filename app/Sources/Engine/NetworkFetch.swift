@@ -62,3 +62,62 @@ final class NetworkFetch: NSObject, URLSessionTaskDelegate {
         completionHandler(followRedirects ? request : nil)
     }
 }
+
+/// Résultat d'une sonde de lien de flux.
+struct ProbeResult {
+    let status: Int
+    let contentType: String?
+    let error: String?
+    let ms: Int
+
+    var isOK: Bool { (200...299).contains(status) }
+
+    /// Diagnostic court et lisible.
+    var diagnosis: String {
+        if let error { return error }
+        switch status {
+        case 200, 206: return "OK"
+        case 401, 403: return "\(status) (headers?)"
+        case 404, 410: return "\(status) (dead)"
+        case 429: return "429 (rate limited)"
+        case 500...599: return "\(status) (server error)"
+        default: return "\(status)"
+        }
+    }
+}
+
+extension NetworkFetch {
+    /// Sonde un lien de flux : envoie une requête, lit le statut et les en-têtes
+    /// de réponse, puis annule avant de télécharger le corps.
+    static func probe(url: URL, headers: [String: String], timeout: TimeInterval = 15) async -> ProbeResult {
+        let started = Date()
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = timeout
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
+        // N'obtenir que le début : évite de télécharger la vidéo entière.
+        request.setValue("bytes=0-1", forHTTPHeaderField: "Range")
+
+        do {
+            let (bytes, response) = try await session.bytes(for: request)
+            bytes.task.cancel() // on ne veut que les en-têtes
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            let http = response as? HTTPURLResponse
+            return ProbeResult(
+                status: http?.statusCode ?? 0,
+                contentType: http?.value(forHTTPHeaderField: "Content-Type"),
+                error: nil,
+                ms: ms
+            )
+        } catch {
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            return ProbeResult(status: 0, contentType: nil,
+                               error: (error as NSError).localizedDescription, ms: ms)
+        }
+    }
+}

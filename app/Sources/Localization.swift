@@ -87,6 +87,10 @@ let frenchStrings: [String: String] = [
     "Custom keyword": "Mot-clé personnalisé",
     "Relaunch with this keyword": "Relancer avec ce mot-clé",
     "Set all": "Tout définir",
+    "Check stream links": "Vérifier les liens de flux",
+    "In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…":
+        "Dans le test en masse, sonde chaque lien de flux retourné (avec ses en-têtes) pour détecter les serveurs morts, les 403 (mauvais en-têtes), les délais dépassés…",
+    "Links": "Liens",
     "Loading": "Chargement",
     "Search": "Recherche",
     "Details": "Détails",

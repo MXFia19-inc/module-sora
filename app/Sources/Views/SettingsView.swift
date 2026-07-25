@@ -27,6 +27,12 @@ struct SettingsView: View {
                 Toggle(L("Block trackers"), isOn: $settings.blockWebhooks)
             }
 
+            Section {
+                Toggle(L("Check stream links"), isOn: $settings.checkStreams)
+            } footer: {
+                Text(L("In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…"))
+            }
+
             if settings.blockWebhooks {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {

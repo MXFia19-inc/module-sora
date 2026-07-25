@@ -85,7 +85,7 @@ struct ModuleTestReport: Identifiable {
     var id: String { module.id }
 
     /// Noms d'étapes (identifiants stables en anglais ; traduits à l'affichage).
-    static let stepNames = ["Loading", "Search", "Details", "Episodes", "Streams"]
+    static let stepNames = ["Loading", "Search", "Details", "Episodes", "Streams", "Links"]
 
     init(module: LoadedModule, category: TestCategory, keyword: String) {
         self.module = module

@@ -7,6 +7,7 @@ enum LogKind: String {
     case error
     case info
     case blocked
+    case player
 }
 
 /// Requête `fetchv2` rejouable (attachée aux logs réseau).

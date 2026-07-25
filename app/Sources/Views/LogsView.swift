@@ -165,6 +165,7 @@ private extension LogKind {
         case .error: return "exclamationmark.triangle"
         case .info: return "info.circle"
         case .blocked: return "hand.raised.fill"
+        case .player: return "play.rectangle.fill"
         }
     }
     var color: Color {
@@ -174,6 +175,7 @@ private extension LogKind {
         case .error: return .red
         case .info: return .green
         case .blocked: return .orange
+        case .player: return .purple
         }
     }
 }

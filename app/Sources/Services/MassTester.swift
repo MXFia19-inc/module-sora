@@ -125,14 +125,16 @@ final class MassTester: ObservableObject {
         }
 
         guard let episodeHref = targetEpisode?.href else {
-            skip(index, "Streams")
+            skip(index, "Streams"); skip(index, "Links")
             return
         }
 
         // 5. Flux.
+        var extraction: StreamExtraction?
         do {
             let result = try await timed(index, "Streams") { try await runner.streams(episodeHref) }
             setRaw(index, "Streams", result.raw)
+            extraction = result.value
             if let first = result.value.streams.first {
                 success(index, "Streams", "\(result.value.streams.count) stream(s) · « \(first.title) »")
             } else {
@@ -141,6 +143,42 @@ final class MassTester: ObservableObject {
         } catch {
             fail(index, "Streams", error)
         }
+
+        // 6. Vérification des liens (optionnelle).
+        guard settings.checkStreams else { skip(index, "Links"); return }
+        guard let streams = extraction?.streams, !streams.isEmpty else {
+            skip(index, "Links"); return
+        }
+        await checkLinks(index: index, streams: streams, debugLog: debugLog)
+    }
+
+    /// Sonde chaque lien de flux et résume l'état (serveur mort, en-têtes refusés…).
+    private func checkLinks(index: Int, streams: [StreamResult], debugLog: DebugLog) async {
+        setStatus(index, "Links", .running)
+        let started = Date()
+        let moduleName = reports[index].module.name
+        let toCheck = Array(streams.prefix(10))
+
+        var okCount = 0
+        var lines: [String] = []
+        for stream in toCheck {
+            guard let url = URL(string: stream.url) else {
+                lines.append("✗ \(stream.title) — invalid URL")
+                continue
+            }
+            let result = await NetworkFetch.probe(url: url, headers: stream.headers)
+            if result.isOK { okCount += 1 }
+            lines.append("\(result.isOK ? "✓" : "✗") \(stream.title) — \(result.diagnosis) (\(result.ms) ms)")
+            debugLog.append(result.isOK ? .info : .error,
+                            "link \(result.diagnosis) · \(stream.title)",
+                            module: moduleName, detail: stream.url)
+        }
+
+        setDuration(index, "Links", Int(Date().timeIntervalSince(started) * 1000))
+        let summary = "\(okCount)/\(toCheck.count) OK\n" + lines.joined(separator: "\n")
+        // Échec seulement si AUCUN lien ne répond ; sinon succès (le détail
+        // liste les liens morts ou refusés pour diagnostic).
+        update(index, "Links", okCount == 0 ? .failure : .success, summary)
     }
 
     /// Nombre de modules dont le test est un succès complet.

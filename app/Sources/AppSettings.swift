@@ -29,6 +29,9 @@ final class AppSettings: ObservableObject {
     /// Mot-clé libre par défaut pour la catégorie « Custom ».
     @Published var kwCustom: String { didSet { defaults.set(kwCustom, forKey: Keys.kwCustom) } }
 
+    /// Vérifier chaque lien de flux retourné (serveur mort, en-têtes invalides…).
+    @Published var checkStreams: Bool { didSet { defaults.set(checkStreams, forKey: Keys.checkStreams) } }
+
     func keyword(for category: TestCategory) -> String {
         switch category {
         case .anime: return kwAnime
@@ -62,6 +65,7 @@ final class AppSettings: ObservableObject {
         static let kwSerie = "kwSerie"
         static let kwManga = "kwManga"
         static let kwCustom = "kwCustom"
+        static let checkStreams = "checkStreams"
         static let serieEp = "serieEpisode"
         static let language = "appLanguage"
         static let supabaseMigration = "migratedSupabase"
@@ -100,6 +104,7 @@ final class AppSettings: ObservableObject {
         kwSerie = d.string(forKey: Keys.kwSerie) ?? "breaking bad"
         kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
         kwCustom = d.string(forKey: Keys.kwCustom) ?? ""
+        checkStreams = d.object(forKey: Keys.checkStreams) as? Bool ?? false
         serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1
         let lang = AppLanguage(rawValue: d.string(forKey: Keys.language) ?? "en") ?? .en
         language = lang
