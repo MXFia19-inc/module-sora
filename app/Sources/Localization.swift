@@ -87,6 +87,12 @@ let frenchStrings: [String: String] = [
     "Custom keyword": "Mot-clé personnalisé",
     "Relaunch with this keyword": "Relancer avec ce mot-clé",
     "Set all": "Tout définir",
+    "Presets": "Préréglages",
+    "Save as preset…": "Enregistrer comme préréglage…",
+    "Preset name": "Nom du préréglage",
+    "Delete a preset": "Supprimer un préréglage",
+    "Saves the current selection, forced categories and custom keywords.":
+        "Enregistre la sélection actuelle, les catégories forcées et les mots-clés personnalisés.",
     "Check stream links": "Vérifier les liens de flux",
     "In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…":
         "Dans le test en masse, sonde chaque lien de flux retourné (avec ses en-têtes) pour détecter les serveurs morts, les 403 (mauvais en-têtes), les délais dépassés…",

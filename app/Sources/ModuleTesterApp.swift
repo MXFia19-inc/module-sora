@@ -6,6 +6,7 @@ struct ModuleTesterApp: App {
     @StateObject private var debugLog = DebugLog()
     @StateObject private var settings = AppSettings()
     @StateObject private var massTester = MassTester()
+    @StateObject private var presetStore = PresetStore()
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,7 @@ struct ModuleTesterApp: App {
                 .environmentObject(debugLog)
                 .environmentObject(settings)
                 .environmentObject(massTester)
+                .environmentObject(presetStore)
                 .preferredColorScheme(.dark)
                 .id(settings.language)
         }

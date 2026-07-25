@@ -8,6 +8,7 @@ struct MassTestView: View {
     @EnvironmentObject private var debugLog: DebugLog
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var tester: MassTester
+    @EnvironmentObject private var presetStore: PresetStore
 
     @State private var selected: Set<String> = []
     /// Catégorie choisie manuellement par id de module (absent = Auto).
@@ -15,6 +16,8 @@ struct MassTestView: View {
     /// Mot-clé libre par id de module (prioritaire sur celui de la catégorie).
     @State private var customKeywords: [String: String] = [:]
     @State private var sharePayload: SharePayload?
+    @State private var showSavePreset = false
+    @State private var presetName = ""
 
     var body: some View {
         Form {
@@ -28,6 +31,17 @@ struct MassTestView: View {
         .keyboardDoneToolbar()
         .sheet(item: $sharePayload) { payload in
             ShareSheet(items: [payload.url])
+        }
+        .alert(L("Save as preset…"), isPresented: $showSavePreset) {
+            TextField(L("Preset name"), text: $presetName)
+            Button(L("Save")) {
+                presetStore.save(name: presetName, moduleIds: selected,
+                                 overrides: overrides, customKeywords: customKeywords)
+                presetName = ""
+            }
+            Button(L("Cancel"), role: .cancel) { presetName = "" }
+        } message: {
+            Text(L("Saves the current selection, forced categories and custom keywords."))
         }
         .onAppear {
             if selected.isEmpty { selected = Set(store.modules.map(\.id)) }
@@ -121,6 +135,33 @@ struct MassTestView: View {
                 Text("\(L("Modules to test")) (\(selected.count))")
                 Spacer()
                 Menu {
+                    if !presetStore.presets.isEmpty {
+                        ForEach(presetStore.presets) { preset in
+                            Button("\(preset.name) (\(preset.moduleIds.count))") { apply(preset) }
+                        }
+                        Divider()
+                    }
+                    Button {
+                        presetName = ""
+                        showSavePreset = true
+                    } label: { Label(L("Save as preset…"), systemImage: "square.and.arrow.down") }
+                        .disabled(selected.isEmpty)
+                    if !presetStore.presets.isEmpty {
+                        Menu {
+                            ForEach(presetStore.presets) { preset in
+                                Button(preset.name, role: .destructive) { presetStore.remove(preset) }
+                            }
+                        } label: { Label(L("Delete a preset"), systemImage: "trash") }
+                    }
+                } label: {
+                    HStack(spacing: 2) {
+                        Image(systemName: "bookmark")
+                        Text(L("Presets"))
+                    }
+                    .font(.caption)
+                    .textCase(nil)
+                }
+                Menu {
                     Button(L("Auto")) { setAllCategories(nil) }
                     ForEach(TestCategory.allCases) { c in
                         Button(L(c.label)) { setAllCategories(c) }
@@ -140,6 +181,15 @@ struct MassTestView: View {
                 .textCase(nil)
             }
         }
+    }
+
+    /// Charge un préréglage : sélection, catégories et mots-clés personnalisés.
+    /// Les modules du préréglage qui ne sont plus installés sont ignorés.
+    private func apply(_ preset: TestPreset) {
+        let installed = Set(store.modules.map(\.id))
+        selected = Set(preset.moduleIds).intersection(installed)
+        overrides = presetStore.categories(of: preset).filter { installed.contains($0.key) }
+        customKeywords = preset.customKeywords.filter { installed.contains($0.key) }
     }
 
     /// Applique une catégorie (ou Auto = nil) à TOUS les modules d'un coup.
