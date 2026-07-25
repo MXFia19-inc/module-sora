@@ -1,0 +1,31 @@
+import SwiftUI
+
+/// Onglets racine : Modules (flux de test) | Logs (debug) | Réglages.
+struct RootView: View {
+    @EnvironmentObject private var debugLog: DebugLog
+
+    var body: some View {
+        TabView {
+            NavigationStack {
+                ModulesListView()
+            }
+            .tabItem { Label(L("Modules"), systemImage: "puzzlepiece.extension") }
+
+            NavigationStack {
+                MassTestView()
+            }
+            .tabItem { Label(L("Test"), systemImage: "checklist") }
+
+            NavigationStack {
+                LogsView()
+            }
+            .tabItem { Label(L("Logs"), systemImage: "terminal") }
+            .badge(debugLog.errorCount)
+
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem { Label(L("Settings"), systemImage: "gearshape") }
+        }
+    }
+}
