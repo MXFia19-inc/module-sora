@@ -266,14 +266,44 @@ final class JSEngine {
             return JSValue(newPromiseIn: context) { resolve, reject in
                 Task.detached {
                     do {
-                        let resp = try await NetworkFetch.perform(
-                            url: url, headers: headers, method: method,
+                        var effectiveHeaders = headers
+                        // Hôte déjà passé par Cloudflare : réutiliser le même
+                        // User-Agent, sinon le cookie de clearance est refusé.
+                        if settings.cloudflareBypass,
+                           let ua = await CloudflareBypass.shared.userAgentIfSolved(host: url.host) {
+                            effectiveHeaders["User-Agent"] = ua
+                        }
+
+                        var resp = try await NetworkFetch.perform(
+                            url: url, headers: effectiveHeaders, method: method,
                             body: body, followRedirects: followRedirects
                         )
+                        var bodyString = String(data: resp.body, encoding: .utf8)
+                            ?? String(decoding: resp.body, as: UTF8.self)
+
+                        // Challenge Cloudflare : le résoudre dans un WebView puis réessayer.
+                        if settings.cloudflareBypass,
+                           CloudflareBypass.looksLikeChallenge(status: resp.status, body: bodyString) {
+                            logFetch(.info, "Cloudflare challenge detected — solving…", urlStr)
+                            let solved = await CloudflareBypass.shared.solve(url: url)
+                            if solved {
+                                if let ua = await CloudflareBypass.shared.userAgent {
+                                    effectiveHeaders["User-Agent"] = ua
+                                }
+                                resp = try await NetworkFetch.perform(
+                                    url: url, headers: effectiveHeaders, method: method,
+                                    body: body, followRedirects: followRedirects
+                                )
+                                bodyString = String(data: resp.body, encoding: .utf8)
+                                    ?? String(decoding: resp.body, as: UTF8.self)
+                                logFetch(.info, "Cloudflare cleared — retried (\(resp.status))", urlStr)
+                            } else {
+                                logFetch(.error, "Cloudflare bypass failed (timeout)", urlStr)
+                            }
+                        }
+
                         let ms = Int(Date().timeIntervalSince(started) * 1000)
                         logFetch(.fetch, "\(resp.status) \(urlStr)", "\(ms) ms · \(resp.body.count) o")
-                        let bodyString = String(data: resp.body, encoding: .utf8)
-                            ?? String(decoding: resp.body, as: UTF8.self)
                         // Retour sur la file du moteur pour manipuler le contexte JS.
                         engineQueue.async {
                             guard !disposeFlag.value else { return }

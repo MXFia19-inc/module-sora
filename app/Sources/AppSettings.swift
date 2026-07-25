@@ -32,6 +32,9 @@ final class AppSettings: ObservableObject {
     /// Vérifier chaque lien de flux retourné (serveur mort, en-têtes invalides…).
     @Published var checkStreams: Bool { didSet { defaults.set(checkStreams, forKey: Keys.checkStreams) } }
 
+    /// Résoudre automatiquement les challenges Cloudflare dans un WebView.
+    @Published var cloudflareBypass: Bool { didSet { defaults.set(cloudflareBypass, forKey: Keys.cloudflare) } }
+
     /// URL d'un webhook Discord pour recevoir le résumé du test en masse.
     @Published var discordWebhook: String { didSet { defaults.set(discordWebhook, forKey: Keys.webhook) } }
 
@@ -76,6 +79,7 @@ final class AppSettings: ObservableObject {
         static let kwManga = "kwManga"
         static let kwCustom = "kwCustom"
         static let checkStreams = "checkStreams"
+        static let cloudflare = "cloudflareBypass"
         static let webhook = "discordWebhook"
         static let autoSend = "autoSendReport"
         static let serieEp = "serieEpisode"
@@ -117,6 +121,7 @@ final class AppSettings: ObservableObject {
         kwManga = d.string(forKey: Keys.kwManga) ?? "one piece"
         kwCustom = d.string(forKey: Keys.kwCustom) ?? ""
         checkStreams = d.object(forKey: Keys.checkStreams) as? Bool ?? false
+        cloudflareBypass = d.object(forKey: Keys.cloudflare) as? Bool ?? true
         discordWebhook = d.string(forKey: Keys.webhook) ?? ""
         autoSendReport = d.object(forKey: Keys.autoSend) as? Bool ?? false
         serieEpisode = d.object(forKey: Keys.serieEp) as? Int ?? 1

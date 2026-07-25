@@ -97,6 +97,10 @@ let frenchStrings: [String: String] = [
     "In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…":
         "Dans le test en masse, sonde chaque lien de flux retourné (avec ses en-têtes) pour détecter les serveurs morts, les 403 (mauvais en-têtes), les délais dépassés…",
     "Links": "Liens",
+    "Cloudflare bypass": "Contournement Cloudflare",
+    "Reset Cloudflare clearances": "Réinitialiser les clearances Cloudflare",
+    "When a module hits a « Just a moment… » page, the challenge is solved in a hidden web view and the resulting cookies (and its User-Agent) are reused for the module's requests.":
+        "Quand un module tombe sur une page « Just a moment… », le challenge est résolu dans une vue web masquée et les cookies obtenus (ainsi que son User-Agent) sont réutilisés pour les requêtes du module.",
     "Discord": "Discord",
     "Discord webhook": "Webhook Discord",
     "Send to Discord": "Envoyer sur Discord",

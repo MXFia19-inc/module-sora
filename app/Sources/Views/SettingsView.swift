@@ -28,6 +28,17 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle(L("Cloudflare bypass"), isOn: $settings.cloudflareBypass)
+                if settings.cloudflareBypass {
+                    Button(L("Reset Cloudflare clearances")) {
+                        CloudflareBypass.shared.reset()
+                    }
+                }
+            } footer: {
+                Text(L("When a module hits a « Just a moment… » page, the challenge is solved in a hidden web view and the resulting cookies (and its User-Agent) are reused for the module's requests."))
+            }
+
+            Section {
                 Toggle(L("Check stream links"), isOn: $settings.checkStreams)
             } footer: {
                 Text(L("In mass test, probes every returned stream URL (with its headers) to detect dead servers, 403 (wrong headers), timeouts…"))

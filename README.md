@@ -56,6 +56,10 @@ inspect exactly what each module function returned.
 - **Blocked calls** (trackers) are flagged with an orange `BLOCKED` badge.
 - **Code editor** with line numbers, a **syntax check**, and a **Go to line** button
   that jumps to and highlights the offending line.
+- **Cloudflare bypass**: when a module hits a "Just a moment…" page, the challenge is
+  solved in a hidden web view and the resulting cookies — together with the web view's
+  User-Agent, which the clearance cookie is bound to — are reused for that host, and
+  the request is retried automatically.
 - Long-press any log to copy it.
 
 ### Player
