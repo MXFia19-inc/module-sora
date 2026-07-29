@@ -3,17 +3,36 @@ import Foundation
 /// Exécute un test en masse : pour chaque module sélectionné, déroule le
 /// pipeline Chargement → Recherche → Détails → Épisodes → Flux avec le mot-clé
 /// correspondant à son type, et publie le statut de chaque étape.
+///
+/// Les tests sont exécutés en parallèle (fenêtre glissante bornée par
+/// `maxConcurrency`) pour accélérer les campagnes de test sur de nombreux
+/// modules, tout en évitant de saturer le réseau ou la mémoire (chaque
+/// module possède son propre `JSContext`).
 @MainActor
 final class MassTester: ObservableObject {
     @Published private(set) var reports: [ModuleTestReport] = []
     @Published private(set) var isRunning = false
+
+    /// Conservé pour compatibilité (mode séquentiel / `runSingle`).
     @Published private(set) var currentIndex: Int?
+
+    /// Ensemble des index actuellement en cours d'exécution (mode parallèle).
+    @Published private(set) var runningIndices: Set<Int> = []
+
+    /// Nombre de tests exécutés simultanément. Réglable selon la puissance
+    /// de l'appareil (3-5 est un bon compromis vitesse/stabilité).
+    var maxConcurrency: Int = 3
+
+    /// Nombre de sondes de liens (`checkLinks`) exécutées simultanément.
+    var linkCheckConcurrency: Int = 4
 
     /// `overrides` : catégorie choisie manuellement par id de module (sinon Auto).
     /// `customKeywords` : mot-clé libre par id de module (prioritaire s'il est non vide).
+    /// `parallel` : active l'exécution concurrente des modules (recommandé).
     func run(modules: [LoadedModule], overrides: [String: TestCategory],
              customKeywords: [String: String] = [:],
-             debugLog: DebugLog, settings: AppSettings) async {
+             debugLog: DebugLog, settings: AppSettings,
+             parallel: Bool = true) async {
         guard !isRunning else { return }
         reports = modules.map { module in
             let category = overrides[module.id] ?? TestCategory.from(type: module.manifest.type)
@@ -22,11 +41,19 @@ final class MassTester: ObservableObject {
             return ModuleTestReport(module: module, category: category, keyword: keyword)
         }
         isRunning = true
-        for index in reports.indices {
-            currentIndex = index
-            await runOne(index: index, debugLog: debugLog, settings: settings)
+        runningIndices = []
+
+        if parallel {
+            await runParallel(debugLog: debugLog, settings: settings)
+        } else {
+            for index in reports.indices {
+                currentIndex = index
+                await runOne(index: index, debugLog: debugLog, settings: settings)
+            }
         }
+
         currentIndex = nil
+        runningIndices = []
         isRunning = false
     }
 
@@ -40,9 +67,51 @@ final class MassTester: ObservableObject {
         let newKeyword = (keyword?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? old.keyword
         reports[index] = ModuleTestReport(module: old.module, category: old.category, keyword: newKeyword)
         currentIndex = index
+        runningIndices = [index]
         await runOne(index: index, debugLog: debugLog, settings: settings)
         currentIndex = nil
+        runningIndices = []
         isRunning = false
+    }
+
+    // MARK: - Parallélisation
+
+    /// Exécute tous les rapports avec au plus `maxConcurrency` tâches simultanées
+    /// (fenêtre glissante : dès qu'une tâche finit, la suivante démarre).
+    private func runParallel(debugLog: DebugLog, settings: AppSettings) async {
+        let indices = Array(reports.indices)
+        var iterator = indices.makeIterator()
+        let limit = max(1, maxConcurrency)
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<limit {
+                guard let index = iterator.next() else { break }
+                addTask(&group, index: index, debugLog: debugLog, settings: settings)
+            }
+            while await group.next() != nil {
+                if let index = iterator.next() {
+                    addTask(&group, index: index, debugLog: debugLog, settings: settings)
+                }
+            }
+        }
+    }
+
+    private func addTask(_ group: inout TaskGroup<Void>, index: Int,
+                          debugLog: DebugLog, settings: AppSettings) {
+        group.addTask { [weak self] in
+            guard let self else { return }
+            await self.markRunning(index, true)
+            await self.runOne(index: index, debugLog: debugLog, settings: settings)
+            await self.markRunning(index, false)
+        }
+    }
+
+    private func markRunning(_ index: Int, _ running: Bool) {
+        if running {
+            runningIndices.insert(index)
+        } else {
+            runningIndices.remove(index)
+        }
     }
 
     // MARK: - Pipeline
@@ -152,26 +221,54 @@ final class MassTester: ObservableObject {
         await checkLinks(index: index, streams: streams, debugLog: debugLog)
     }
 
-    /// Sonde chaque lien de flux et résume l'état (serveur mort, en-têtes refusés…).
+    /// Sonde chaque lien de flux en parallèle (borné par `linkCheckConcurrency`)
+    /// et résume l'état (serveur mort, en-têtes refusés…).
     private func checkLinks(index: Int, streams: [StreamResult], debugLog: DebugLog) async {
         setStatus(index, "Links", .running)
         let started = Date()
         let moduleName = reports[index].module.name
         let toCheck = Array(streams.prefix(10))
 
+        // Résultat par position pour préserver l'ordre d'affichage malgré la concurrence.
+        var results = [(ok: Bool, line: String)?](repeating: nil, count: toCheck.count)
+
+        await withTaskGroup(of: (Int, Bool, String).self) { group in
+            var iterator = toCheck.enumerated().makeIterator()
+            let limit = max(1, linkCheckConcurrency)
+
+            func launch(_ position: Int, _ stream: StreamResult) {
+                group.addTask {
+                    guard let url = URL(string: stream.url) else {
+                        return (position, false, "✗ \(stream.title) — invalid URL")
+                    }
+                    let result = await NetworkFetch.probe(url: url, headers: stream.headers)
+                    let line = "\(result.isOK ? "✓" : "✗") \(stream.title) — \(result.diagnosis) (\(result.ms) ms)"
+                    return (position, result.isOK, line)
+                }
+            }
+
+            for _ in 0..<limit {
+                guard let (position, stream) = iterator.next() else { break }
+                launch(position, stream)
+            }
+
+            while let (position, ok, line) = await group.next() {
+                results[position] = (ok, line)
+                if let (nextPosition, nextStream) = iterator.next() {
+                    launch(nextPosition, nextStream)
+                }
+            }
+        }
+
         var okCount = 0
         var lines: [String] = []
-        for stream in toCheck {
-            guard let url = URL(string: stream.url) else {
-                lines.append("✗ \(stream.title) — invalid URL")
-                continue
-            }
-            let result = await NetworkFetch.probe(url: url, headers: stream.headers)
-            if result.isOK { okCount += 1 }
-            lines.append("\(result.isOK ? "✓" : "✗") \(stream.title) — \(result.diagnosis) (\(result.ms) ms)")
-            debugLog.append(result.isOK ? .info : .error,
-                            "link \(result.diagnosis) · \(stream.title)",
-                            module: moduleName, detail: stream.url)
+        for (i, entry) in results.enumerated() {
+            guard let entry else { continue }
+            if entry.ok { okCount += 1 }
+            lines.append(entry.line)
+            debugLog.append(entry.ok ? .info : .error,
+                            "link check",
+                            module: moduleName, detail: toCheck[i].url)
         }
 
         setDuration(index, "Links", Int(Date().timeIntervalSince(started) * 1000))
