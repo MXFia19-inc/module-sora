@@ -8,6 +8,7 @@ struct ModulesListView: View {
     @State private var showAddURL = false
     @State private var showQuickAdd = false
     @State private var showLibrary = false
+    @State private var showRepos = false
     @State private var showPaste = false
     @State private var showImporter = false
     @State private var showDeleteAll = false
@@ -34,7 +35,7 @@ struct ModulesListView: View {
                 ContentUnavailableViewCompat(
                     title: L("No module"),
                     systemImage: "puzzlepiece.extension",
-                    description: L("Add a module by URL, from a library (cufiy…), the Luna list, or a file.")
+                    description: L("Add a module by URL, from a repository (GitHub…), a library (cufiy…), the Luna list, or a file.")
                 )
             }
             ForEach(displayed) { module in
@@ -85,6 +86,7 @@ struct ModulesListView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button { showAddURL = true } label: { Label(L("Add by URL"), systemImage: "link") }
+                    Button { showRepos = true } label: { Label(L("Repositories (GitHub…)"), systemImage: "shippingbox") }
                     Button { showLibrary = true } label: { Label(L("Libraries (cufiy…)"), systemImage: "books.vertical") }
                     Button { showQuickAdd = true } label: { Label(L("Luna modules (MXFia19)"), systemImage: "star") }
                     Button { showPaste = true } label: { Label(L("Paste code (local)"), systemImage: "curlybraces.square") }
@@ -116,6 +118,9 @@ struct ModulesListView: View {
         }
         .sheet(isPresented: $showLibrary) {
             LibraryView()
+        }
+        .sheet(isPresented: $showRepos) {
+            RepoListView()
         }
         .sheet(isPresented: $showPaste) {
             PasteModuleView()

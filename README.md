@@ -6,8 +6,8 @@ MAL, social or library features — only what you need to run a module and see e
 what it returns.
 
 > The modules themselves now live at
-> [git.luna-app.eu/MXFia19/sources](https://git.luna-app.eu/MXFia19/sources).
-> This repository only hosts the app.
+> [github.com/MXFia19/module-sora](https://github.com/MXFia19/module-sora)
+> (preloaded in **Repositories**). This repository only hosts the app.
 
 ---
 
@@ -15,6 +15,14 @@ what it returns.
 
 ### Module management
 - **Add by URL** — paste a manifest `.json` URL.
+- **Repositories** — paste a repository link (`https://github.com/owner/repo`, the
+  `owner/repo` shorthand, or a Gitea/Forgejo link such as Codeberg) and every module
+  in it is listed: each `.json` manifest that sits next to a `.js` file. A
+  `…/tree/<branch>/<folder>` link limits the scan to that folder. Install modules one
+  by one, **Install all**, or **Update all** (a module is outdated when the repository's
+  version differs from the installed one). Repositories are remembered;
+  `MXFia19/module-sora` is there by default. One GitHub API call per scan (the
+  manifests are read from raw URLs, outside the 60 requests/hour anonymous quota).
 - **Libraries** — load a JSON index of modules (cufiy by default, or any URL),
   with **search** (name, author, type) and a **language filter**; each row shows
   language, type and author, and installs in one tap.

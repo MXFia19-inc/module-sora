@@ -38,8 +38,12 @@ final class ModuleStore: ObservableObject {
     /// Identifiants des modules épinglés (favoris).
     @Published private(set) var pinned: Set<String> = []
 
+    /// Dépôts de modules enregistrés (liens GitHub / Gitea).
+    @Published private(set) var repos: [String] = []
+
     private let fileURL: URL
     private let pinsKey = "pinnedModules"
+    private let reposKey = "moduleRepos"
 
     /// Modules connus de MXFia19 sur la source Luna (ajout en un tap).
     /// Pattern : `…/raw/branch/main/<dossier>/<dossier>.json`.
@@ -61,11 +65,103 @@ final class ModuleStore: ObservableObject {
         ModuleLibrarySource(name: "Cufiy", url: "https://library.cufiy.net/api/modules.min.json"),
     ]
 
+    /// Dépôts proposés au premier lancement.
+    static let defaultRepos: [String] = ["https://github.com/MXFia19/module-sora"]
+
     init() {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         fileURL = dir.appendingPathComponent("modules.json")
         load()
         pinned = Set(UserDefaults.standard.stringArray(forKey: pinsKey) ?? [])
+        repos = UserDefaults.standard.stringArray(forKey: reposKey) ?? ModuleStore.defaultRepos
+    }
+
+    // MARK: - Dépôts
+
+    /// Ajoute un dépôt. Renvoie `false` s'il était déjà enregistré.
+    @discardableResult
+    func addRepo(_ url: String) -> Bool {
+        let clean = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, !repos.contains(clean) else { return false }
+        repos.append(clean)
+        UserDefaults.standard.set(repos, forKey: reposKey)
+        return true
+    }
+
+    func removeRepo(_ url: String) {
+        repos.removeAll { $0 == url }
+        UserDefaults.standard.set(repos, forKey: reposKey)
+    }
+
+    /// Module installé correspondant à une entrée de dépôt (même script ou même manifest).
+    func installed(for entry: RepoModuleEntry) -> LoadedModule? {
+        modules.first {
+            $0.manifest.scriptUrl == entry.manifest.scriptUrl || $0.manifest.manifestUrl == entry.manifestURL
+        }
+    }
+
+    /// Installe (ou met à jour) des modules trouvés dans un dépôt : le manifest est
+    /// déjà lu, seul le script est téléchargé (6 à la fois). `progress` reçoit le
+    /// nombre de modules traités. Renvoie les échecs, une ligne « nom : erreur » chacun.
+    func installFromRepo(_ entries: [RepoModuleEntry], progress: @escaping (Int) -> Void) async -> [String] {
+        var errors: [String] = []
+        var done = 0
+        let limit = 6
+        await withTaskGroup(of: (RepoModuleEntry, Result<Data, Error>).self) { group in
+            var next = 0
+            while next < min(limit, entries.count) {
+                let entry = entries[next]
+                next += 1
+                group.addTask {
+                    let result = await ModuleStore.download(entry.manifest.scriptUrl)
+                    return (entry, result)
+                }
+            }
+            for await (entry, result) in group {
+                switch result {
+                case .success(let data):
+                    var manifest = entry.manifest
+                    manifest.manifestUrl = entry.manifestURL
+                    // Le manifest a pu changer de scriptUrl : on remplace l'ancienne installation.
+                    if let existing = installed(for: entry), existing.manifest.scriptUrl != manifest.scriptUrl {
+                        modules.removeAll { $0.id == existing.id }
+                    }
+                    upsert(LoadedModule(manifest: manifest,
+                                        scriptContent: String(decoding: data, as: UTF8.self),
+                                        addedAt: Date()), save: false)
+                case .failure(let error):
+                    errors.append("\(entry.manifest.sourceName) : \(error.localizedDescription)")
+                }
+                done += 1
+                progress(done)
+                if next < entries.count {
+                    let entry = entries[next]
+                    next += 1
+                    group.addTask {
+                        let result = await ModuleStore.download(entry.manifest.scriptUrl)
+                        return (entry, result)
+                    }
+                }
+            }
+        }
+        persist()
+        return errors
+    }
+
+    /// Téléchargement brut hors du main actor (scripts des modules d'un dépôt).
+    nonisolated private static func download(_ urlString: String) async -> Result<Data, Error> {
+        guard let url = URL(string: urlString) else { return .failure(ModuleStoreError.badScriptURL) }
+        var request = URLRequest(url: url)
+        request.setValue("ModuleTester/1.0", forHTTPHeaderField: "User-Agent")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                return .failure(ModuleStoreError.network("HTTP \(http.statusCode) pour \(url.lastPathComponent)"))
+            }
+            return .success(data)
+        } catch {
+            return .failure(ModuleStoreError.network(error.localizedDescription))
+        }
     }
 
     // MARK: - Favoris
@@ -91,13 +187,13 @@ final class ModuleStore: ObservableObject {
 
     // MARK: - Mutations
 
-    private func upsert(_ module: LoadedModule) {
+    private func upsert(_ module: LoadedModule, save: Bool = true) {
         if let idx = modules.firstIndex(where: { $0.id == module.id }) {
             modules[idx] = module
         } else {
             modules.append(module)
         }
-        persist()
+        if save { persist() }
     }
 
     func remove(_ module: LoadedModule) {

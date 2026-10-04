@@ -48,8 +48,8 @@ let frenchStrings: [String: String] = [
 
     // Modules list
     "No module": "Aucun module",
-    "Add a module by URL, from a library (cufiy…), the Luna list, or a file.":
-        "Ajoutez un module par URL, via une bibliothèque (cufiy…), la liste Luna, ou un fichier.",
+    "Add a module by URL, from a repository (GitHub…), a library (cufiy…), the Luna list, or a file.":
+        "Ajoutez un module par URL, via un dépôt (GitHub…), une bibliothèque (cufiy…), la liste Luna, ou un fichier.",
     "Pin": "Épingler",
     "Unpin": "Désépingler",
     "Search a module": "Rechercher un module",
@@ -57,6 +57,7 @@ let frenchStrings: [String: String] = [
     "Delete all": "Tout supprimer",
     "Add by URL": "Ajouter par URL",
     "Libraries (cufiy…)": "Bibliothèques (cufiy…)",
+    "Repositories (GitHub…)": "Dépôts (GitHub…)",
     "Luna modules (MXFia19)": "Modules Luna (MXFia19)",
     "Paste code (local)": "Coller du code (local)",
     "Import a file": "Importer un fichier",
@@ -66,6 +67,29 @@ let frenchStrings: [String: String] = [
         "Sélectionnez le fichier .json (et son .js) du module.",
     "Also add the module's .js file.": "Ajoutez aussi le fichier .js du module.",
     "Luna modules": "Modules Luna",
+
+    // Dépôts
+    "Repositories": "Dépôts",
+    "Add a repository": "Ajouter un dépôt",
+    "GitHub or Gitea link. Every module in the repository is listed: each .json manifest next to a .js file. A …/tree/<branch>/<folder> link limits the scan to that folder.":
+        "Lien GitHub ou Gitea. Tous les modules du dépôt sont listés : chaque manifest .json posé à côté d'un fichier .js. Un lien …/tree/<branche>/<dossier> limite l'analyse à ce dossier.",
+    "No repository": "Aucun dépôt",
+    "This repository is already in the list.": "Ce dépôt est déjà dans la liste.",
+    "Unrecognized repository link.": "Lien de dépôt non reconnu.",
+    "Repository or branch not found.": "Dépôt ou branche introuvable.",
+    "GitHub API rate limit reached (60 requests per hour without an account). Try again later.":
+        "Limite de l'API GitHub atteinte (60 requêtes par heure sans compte). Réessaie plus tard.",
+    "HTTP %lld for %@": "HTTP %lld pour %@",
+    "Scanning the repository…": "Analyse du dépôt…",
+    "Installing %lld/%lld…": "Installation %lld/%lld…",
+    "Install all": "Tout installer",
+    "Update all": "Tout mettre à jour",
+    "Update": "Mettre à jour",
+    "%lld modules · %lld installed · %lld update(s)": "%lld modules · %lld installés · %lld mise(s) à jour",
+    "No module found in this repository.": "Aucun module trouvé dans ce dépôt.",
+    "The repository is too large: the host truncated its file list, some modules may be missing.":
+        "Le dépôt est trop grand : l'hébergeur a tronqué la liste des fichiers, des modules peuvent manquer.",
+    "%lld module(s) failed:": "%lld module(s) en échec :",
 
     // Library
     "Libraries": "Bibliothèques",
