@@ -35,9 +35,11 @@ final class HistoryStore: ObservableObject {
                 category: report.category.label,
                 keyword: report.keyword,
                 overall: report.overall.rawValue,
-                steps: Dictionary(uniqueKeysWithValues: report.steps.map { ($0.name, $0.status.rawValue) }),
+                steps: Dictionary(report.steps.map { ($0.name, $0.status.rawValue) },
+                                  uniquingKeysWith: { first, _ in first }),
                 successCount: report.successCount,
-                stepCount: report.steps.count
+                stepCount: report.steps.count,
+                moduleID: report.module.id
             )
         }
         let record = TestRunRecord(source: source, modules: snapshots)

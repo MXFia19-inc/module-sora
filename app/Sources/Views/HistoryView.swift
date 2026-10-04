@@ -114,12 +114,13 @@ private struct RunDetailView: View {
             }
 
             Section("\(L("Modules")) (\(run.modules.count))") {
-                ForEach(run.modules, id: \.moduleName) { module in
+                // Index comme identifiant : deux modules peuvent porter le même nom.
+                ForEach(Array(run.modules.enumerated()), id: \.offset) { _, module in
                     VStack(alignment: .leading, spacing: 3) {
                         HStack {
                             Image(systemName: statusIcon(module.overall))
                                 .foregroundStyle(statusColor(module.overall))
-                            Text(module.moduleName).font(.subheadline)
+                            Text(run.displayName(of: module)).font(.subheadline)
                             Spacer()
                             Text("\(module.successCount)/\(module.stepCount)")
                                 .font(.caption2).foregroundStyle(.secondary)
